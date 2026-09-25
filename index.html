@@ -1352,7 +1352,7 @@
                 adminHtml = '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-slate-500">Chưa có minh chứng nào.</td></tr>';
             } else {
                 sortedCards.forEach(card => {
-                    adminHtml += renderAdminCardRow(card, 0);
+                    adminHtml += renderAdminCardRow(card);
                 });
             }
             document.getElementById('admin-cards-tbody').innerHTML = adminHtml;
@@ -1360,23 +1360,12 @@
                 document.getElementById('select-all-cards').checked = false;
             }
             if (window.updateSelectedCards) window.updateSelectedCards();
-            parentSelect.value = currentSelectedParent; 
             
             const currentSearchText = document.getElementById('inline-search-input').value.toLowerCase().trim();
             window.renderHomeCards(currentSearchText);
 
             if (window.renderFavorites) window.renderFavorites();
             if (window.renderRecentApps) window.renderRecentApps();
-
-            // Tự động làm mới thư mục đang mở hoặc chuyển về Trang chủ nếu thư mục bị xóa
-            if (document.getElementById('view-folder').classList.contains('active') && window.currentActiveFolderId) {
-                const stillExists = allCards.some(c => c.id === window.currentActiveFolderId);
-                if (stillExists) {
-                    window.navigateToFolder(window.currentActiveFolderId);
-                } else {
-                    window.switchView('home');
-                }
-            }
         });
 
         document.getElementById('card-form').addEventListener('submit', async (e) => {
