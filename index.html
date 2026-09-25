@@ -170,17 +170,17 @@
                 <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                     <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-teal-500 transition-colors"></i>
                 </div>
-                <input type="text" id="inline-search-input" class="w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-slate-700 text-lg placeholder-slate-400" placeholder="Tìm ứng dụng, công cụ, thư mục..." autocomplete="off">
+                <input type="text" id="inline-search-input" class="w-full pl-12 pr-12 py-3.5 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-slate-700 text-lg placeholder-slate-400" placeholder="Tìm minh chứng, thư mục..." autocomplete="off">
                 <button id="btn-clear-search" onclick="window.clearSearch()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-red-500 transition-colors hidden" title="Xóa từ khóa">
                     <i class="fa-solid fa-circle-xmark text-xl"></i>
                 </button>
             </div>
 
-            <!-- Khu vực Ứng Dụng Yêu Thích -->
+            <!-- Khu vực Minh Chứng Yêu Thích -->
             <div id="favorites-section" class="mb-10 hidden">
                 <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
                     <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-heart text-red-500"></i> Ứng dụng Yêu thích của tôi
+                        <i class="fa-solid fa-heart text-red-500"></i> Minh chứng Yêu thích của tôi
                     </h3>
                     <button onclick="window.clearFavorites()" class="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
                         <i class="fa-solid fa-trash-can"></i> Xóa tất cả yêu thích
@@ -208,7 +208,7 @@
             </div>
             <div id="home-empty-state" class="text-center py-10 hidden">
                 <i class="fa-solid fa-rocket text-5xl text-slate-300 mb-3"></i>
-                <p class="text-slate-500">Chưa có ứng dụng hoặc danh mục nào. Hãy vào <a href="#" onclick="window.switchView('admin')" class="text-teal-600 hover:underline">Quản trị viên</a> để thêm mới.</p>
+                <p class="text-slate-500">Chưa có minh chứng hoặc nhóm nào. Hãy vào <a href="#" onclick="window.switchView('admin')" class="text-teal-600 hover:underline">Quản trị viên</a> để thêm mới.</p>
             </div>
         </section>
 
@@ -235,7 +235,7 @@
             
             <div id="folder-empty-state" class="text-center py-10 hidden">
                 <i class="fa-solid fa-box-open text-5xl text-slate-300 mb-3"></i>
-                <p class="text-slate-500">Nhóm này hiện chưa có ứng dụng con nào.</p>
+                <p class="text-slate-500">Nhóm này hiện chưa có minh chứng con nào.</p>
             </div>
         </section>
 
@@ -353,7 +353,7 @@
                         <input type="text" id="card-emoji" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-center text-xl focus:ring-2 focus:ring-teal-500" placeholder="🚀">
                     </div>
                     <div class="col-span-3">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Tên Ứng dụng/Nhóm *</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Tên Minh chứng/Nhóm *</label>
                         <input type="text" id="card-title" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="VD: App Quản lý nhân sự">
                     </div>
                 </div>
@@ -380,7 +380,7 @@
                 
                 <div class="flex items-center mt-2 border-t pt-4">
                     <input type="checkbox" id="card-newtab" class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500">
-                    <label for="card-newtab" class="ml-2 block text-sm text-slate-700">Mở trong tab mới (Dành cho link ứng dụng ngoài)</label>
+                    <label for="card-newtab" class="ml-2 block text-sm text-slate-700">Mở trong tab mới (Dành cho link minh chứng ngoài)</label>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1 mt-2">Đường link (URL)</label>
@@ -498,7 +498,7 @@
             <div class="w-16 h-16 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-3xl mx-auto mb-4" id="share-emoji">
                 📱
             </div>
-            <h3 class="text-xl font-bold text-slate-800 mb-1" id="share-title">Chia Sẻ Ứng Dụng</h3>
+            <h3 class="text-xl font-bold text-slate-800 mb-1" id="share-title">Chia Sẻ Minh Chứng</h3>
             <p class="text-sm text-slate-500 mb-6" id="share-desc">Quét mã QR dưới đây hoặc sao chép liên kết để truy cập nhanh:</p>
             
             <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200/80 inline-block mb-6 shadow-inner">
@@ -531,7 +531,7 @@
                 <div class="flex items-center gap-3 min-w-0">
                     <span class="text-2xl" id="iframe-emoji">🚀</span>
                     <div class="min-w-0">
-                        <h3 class="text-base font-bold text-white truncate" id="iframe-title">Tiêu đề Ứng dụng</h3>
+                        <h3 class="text-base font-bold text-white truncate" id="iframe-title">Tiêu đề Minh Chứng</h3>
                         <p class="text-xs text-slate-400 truncate" id="iframe-subtitle">https://...</p>
                     </div>
                 </div>
@@ -548,7 +548,7 @@
             <div class="flex-1 relative bg-slate-900 flex items-center justify-center">
                 <div id="iframe-loading" class="absolute flex flex-col items-center justify-center text-slate-400 gap-3 z-10">
                     <i class="fa-solid fa-circle-notch fa-spin text-4xl text-teal-500"></i>
-                    <span class="text-sm">Đang tải ứng dụng trực tiếp...</span>
+                    <span class="text-sm">Đang tải minh chứng trực tiếp...</span>
                 </div>
                 <iframe id="iframe-viewer-content" src="" class="w-full h-full border-0 relative z-20" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
             </div>
@@ -1074,9 +1074,9 @@
                 homeContainer.innerHTML = '';
                 emptyState.classList.remove('hidden');
                 if (queryText !== '') {
-                    emptyState.innerHTML = '<i class="fa-solid fa-ghost text-5xl text-slate-300 mb-3"></i><p class="text-slate-500 mt-2">Không tìm thấy ứng dụng hoặc danh mục nào phù hợp.</p>';
+                    emptyState.innerHTML = '<i class="fa-solid fa-ghost text-5xl text-slate-300 mb-3"></i><p class="text-slate-500 mt-2">Không tìm thấy minh chứng hoặc danh mục nào phù hợp.</p>';
                 } else {
-                    emptyState.innerHTML = '<i class="fa-solid fa-rocket text-5xl text-slate-300 mb-3"></i><p class="text-slate-500 mt-2">Chưa có ứng dụng hoặc danh mục nào. Hãy vào <a href="#" onclick="window.switchView(\'admin\')" class="text-teal-600 hover:underline">Quản trị viên</a> để thêm mới.</p>';
+                    emptyState.innerHTML = '<i class="fa-solid fa-rocket text-5xl text-slate-300 mb-3"></i><p class="text-slate-500 mt-2">Chưa có minh chứng hoặc danh mục nào. Hãy vào <a href="#" onclick="window.switchView(\'admin\')" class="text-teal-600 hover:underline">Quản trị viên</a> để thêm mới.</p>';
                 }
             } else {
                 emptyState.classList.add('hidden');
@@ -1102,7 +1102,7 @@
 
                     // Đếm số lượng con nếu là danh mục gốc
                     const childrenCount = isRoot ? allCards.filter(c => c.parentId === card.id).length : 0;
-                    const countBadge = isRoot ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm w-max mb-3"><i class="fa-solid fa-folder-tree"></i> ${childrenCount} ứng dụng</span>` : '';
+                    const countBadge = isRoot ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm w-max mb-3"><i class="fa-solid fa-folder-tree"></i> ${childrenCount} mục</span>` : '';
 
                     // Tìm nhóm cha nếu là app con khi đang tìm kiếm
                     const parentCard = card.parentId ? allCards.find(c => c.id === card.parentId) : null;
@@ -1334,7 +1334,7 @@
                 const randomEmoji = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
                 document.getElementById('card-emoji').value = randomEmoji;
             }
-            document.getElementById('card-modal-title').innerText = id ? "Sửa Ứng Dụng/Nhóm" : "Thêm Ứng Dụng/Nhóm Mới";
+            document.getElementById('card-modal-title').innerText = id ? "Sửa Minh Chứng/Nhóm" : "Thêm Minh Chứng/Nhóm Mới";
             cardModal.classList.remove('hidden');
         }
         window.closeCardModal = () => { cardModal.classList.add('hidden'); document.getElementById('card-form').reset(); }
@@ -1402,7 +1402,7 @@
         };
 
         window.insertEditorBox = function() {
-            const boxTemplate = `<div class="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-r-lg my-3">\n    <p class="font-bold text-teal-800 mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Lưu ý quan trọng:</p>\n    <p class="text-slate-700">Ghi chú hoặc thông tin cần lưu ý dành cho người sử dụng ứng dụng này.</p>\n</div>\n`;
+            const boxTemplate = `<div class="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-r-lg my-3">\n    <p class="font-bold text-teal-800 mb-1"><i class="fa-solid fa-circle-info mr-1"></i> Lưu ý quan trọng:</p>\n    <p class="text-slate-700">Ghi chú hoặc thông tin cần lưu ý dành cho người sử dụng minh chứng này.</p>\n</div>\n`;
             const textarea = document.getElementById('content-html');
             if (!textarea) return;
             textarea.setRangeText(boxTemplate, textarea.selectionStart, textarea.selectionEnd, 'end');
@@ -1474,7 +1474,7 @@
             parentSelect.innerHTML = '<option value="">-- Không có (Sẽ hiển thị thành Nhóm gốc ở Trang chủ) --</option>';
 
             if (rootCards.length === 0) {
-                adminHtml = '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-slate-500">Chưa có ứng dụng hoặc nhóm nào.</td></tr>';
+                adminHtml = '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-slate-500">Chưa có minh chứng hoặc nhóm nào.</td></tr>';
             } else {
                 rootCards.forEach(root => {
                     parentSelect.innerHTML += `<option value="${root.id}">${root.emoji || '📁'} ${root.title}</option>`;
@@ -1568,7 +1568,7 @@
             const descendants = getDescendantIds(id);
             let msg = `Bạn có chắc chắn muốn xóa "${card.title}" cùng nội dung hướng dẫn đi kèm không?`;
             if (descendants.length > 0) {
-                msg = `Nhóm "${card.title}" đang chứa ${descendants.length} ứng dụng/mục con bên trong.\nBạn có CHẮC CHẮN muốn xóa nhóm này cùng toàn bộ ${descendants.length} mục con và hướng dẫn đi kèm không?`;
+                msg = `Nhóm "${card.title}" đang chứa ${descendants.length} minh chứng/mục con bên trong.\nBạn có CHẮC CHẮN muốn xóa nhóm này cùng toàn bộ ${descendants.length} mục con và hướng dẫn đi kèm không?`;
             }
 
             if (confirm(msg)) {
@@ -1629,7 +1629,7 @@
 
             let confirmMsg = `Bạn có chắc chắn muốn xóa vĩnh viễn ${ids.length} mục đã chọn không?`;
             if (parentCount > 0) {
-                confirmMsg += `\n\n⚠️ LƯU Ý: Trong đó có ${parentCount} Danh mục/Nhóm gốc. Xóa nhóm gốc sẽ TỰ ĐỘNG XÓA toàn bộ các ứng dụng con và nội dung hướng dẫn bên trong!`;
+                confirmMsg += `\n\n⚠️ LƯU Ý: Trong đó có ${parentCount} Danh mục/Nhóm gốc. Xóa nhóm gốc sẽ TỰ ĐỘNG XÓA toàn bộ các minh chứng con và nội dung hướng dẫn bên trong!`;
             }
 
             if (!confirm(confirmMsg)) return;
