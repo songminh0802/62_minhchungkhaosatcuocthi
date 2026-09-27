@@ -1100,7 +1100,7 @@
                         <div onclick="window.handleCardClick('${card.id}')" class="bg-white rounded-[2rem] shadow-sm hover:shadow-md border border-slate-50 p-6 sm:p-8 relative overflow-hidden flex flex-col text-left group cursor-pointer transition-all duration-300 hover:-translate-y-1 min-h-[260px]">
                             <div class="absolute -top-12 -right-12 w-56 h-56 rounded-full ${theme.blob} opacity-50 blur-[40px] z-0 transition-transform group-hover:scale-110 duration-500"></div>
 
-                            <div class="absolute top-4 left-4 w-8 h-8 rounded-full bg-slate-100/80 text-slate-600 font-bold flex items-center justify-center shadow-sm z-20 text-sm border border-slate-200/50 backdrop-blur-sm">${index + 1}</div>
+                            <div class="absolute top-4 left-4 w-8 h-8 rounded-full bg-slate-100/80 text-slate-600 font-bold flex items-center justify-center shadow-sm z-20 text-sm border border-slate-200/50 backdrop-blur-sm">${displayCards.length - index}</div>
                             ${typeBadge}
                             ${favBtn}
 
@@ -1304,7 +1304,7 @@
         window.closeContentModal = () => { contentModal.classList.add('hidden'); }
 
         // --- 5. FIRESTORE CRUD CARDS ---
-        function renderAdminCardRow(card, index) {
+        function renderAdminCardRow(card, seqNum) {
             const emoji = card.emoji || '📱';
             const orderBadge = (card.order !== undefined && card.order !== null && card.order !== '') 
                 ? `<span class="inline-block bg-teal-50 text-teal-700 border border-teal-200 text-xs font-semibold px-2 py-0.5 rounded ml-2 font-mono" title="Thứ tự ưu tiên">#${card.order}</span>` 
@@ -1323,7 +1323,7 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
-                            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold mr-3">${index + 1}</div>
+                            <div class="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold mr-3">${seqNum}</div>
                             <div class="text-xl mr-3">${emoji}</div>
                             <div class="text-sm font-bold text-teal-700">${card.title}${orderBadge}</div>
                         </div>
@@ -1350,7 +1350,7 @@
                 adminHtml = '<tr><td colspan="4" class="px-6 py-4 text-center text-sm text-slate-500">Chưa có minh chứng nào.</td></tr>';
             } else {
                 sortedCards.forEach((card, index) => {
-                    adminHtml += renderAdminCardRow(card, index);
+                    adminHtml += renderAdminCardRow(card, sortedCards.length - index);
                 });
             }
             document.getElementById('admin-cards-tbody').innerHTML = adminHtml;
