@@ -336,8 +336,8 @@
 
                 <!-- Thứ tự ưu tiên -->
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1" title="Số nhỏ hiển thị trước">Thứ tự ưu tiên</label>
-                    <input type="number" id="card-order" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="1, 2, 3...">
+                    <label class="block text-sm font-medium text-slate-700 mb-1" title="Hệ thống tự động hiển thị link mới tạo lên đầu">Thứ tự ưu tiên <span class="text-xs text-slate-400 font-normal">(Tự động xếp link mới tạo lên đầu tiên)</span></label>
+                    <input type="number" id="card-order" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="Tùy chọn ghi chú số...">
                 </div>
 
                 <div>
@@ -863,12 +863,42 @@
             }
         };
 
-        // Hàm sắp xếp thẻ theo Thứ tự ưu tiên (order) sau đó theo Tên (A-Z)
+        // Hàm trích xuất thời gian tạo (timestamp) an toàn từ đối tượng thẻ
+        function getCardTimestamp(card) {
+            if (!card) return 0;
+            if (card.createdAt) {
+                if (typeof card.createdAt.toDate === 'function') {
+                    return card.createdAt.toDate().getTime();
+                }
+                if (typeof card.createdAt.seconds === 'number') {
+                    return card.createdAt.seconds * 1000;
+                }
+                if (typeof card.createdAt === 'number') {
+                    return card.createdAt;
+                }
+                const parsed = new Date(card.createdAt).getTime();
+                if (!isNaN(parsed)) return parsed;
+            }
+            return 0;
+        }
+
+        // Hàm sắp xếp thẻ: Link nào tạo sau (mới hơn) sẽ luôn hiện đầu tiên (100% theo thời gian tạo)
         function sortCards(cards) {
             return cards.slice().sort((a, b) => {
-                const orderA = a.order !== undefined && a.order !== null && a.order !== '' ? Number(a.order) : 9999;
-                const orderB = b.order !== undefined && b.order !== null && b.order !== '' ? Number(b.order) : 9999;
+                const timeA = getCardTimestamp(a);
+                const timeB = getCardTimestamp(b);
+                
+                // 1. Thẻ tạo sau (mới hơn, timestamp lớn hơn) luôn đứng đầu
+                if (timeA !== timeB) {
+                    return timeB - timeA;
+                }
+
+                // 2. Fallback cho các thẻ cũ chưa có createdAt hoặc cùng thời điểm:
+                // Nếu có thứ tự cũ (order) thì dùng, nếu không thì theo Tên A-Z
+                const orderA = (a.order !== undefined && a.order !== null && a.order !== '') ? Number(a.order) : 9999;
+                const orderB = (b.order !== undefined && b.order !== null && b.order !== '') ? Number(b.order) : 9999;
                 if (orderA !== orderB) return orderA - orderB;
+
                 return (a.title || '').localeCompare(b.title || '', 'vi', { sensitivity: 'base' });
             });
         }
@@ -1002,18 +1032,37 @@
             if (targetIdx < 0 || targetIdx >= siblings.length) return;
 
             const targetCard = siblings[targetIdx];
-            const orderA = (card.order !== undefined && card.order !== null && card.order !== '') ? Number(card.order) : (idx + 1) * 10;
-            const orderB = (targetCard.order !== undefined && targetCard.order !== null && targetCard.order !== '') ? Number(targetCard.order) : (targetIdx + 1) * 10;
+            
+            let timeA = getCardTimestamp(card);
+            let timeB = getCardTimestamp(targetCard);
+            
+            const now = Date.now();
+            if (timeA === 0 && timeB === 0) {
+                timeA = now - (idx * 60000);
+                timeB = now - (targetIdx * 60000);
+            } else if (timeA === 0) {
+                timeA = timeB + (direction < 0 ? -1000 : 1000);
+            } else if (timeB === 0) {
+                timeB = timeA + (direction < 0 ? 1000 : -1000);
+            }
 
-            let newOrderA = orderB;
-            let newOrderB = orderA;
-            if (newOrderA === newOrderB) {
-                newOrderA = orderB + direction * 5;
+            let newCreatedAtA, newCreatedAtB;
+            if (timeA === timeB) {
+                if (direction < 0) {
+                    newCreatedAtA = new Date(timeB + 1000).toISOString();
+                    newCreatedAtB = new Date(timeB).toISOString();
+                } else {
+                    newCreatedAtA = new Date(timeB - 1000).toISOString();
+                    newCreatedAtB = new Date(timeB).toISOString();
+                }
+            } else {
+                newCreatedAtA = new Date(timeB).toISOString();
+                newCreatedAtB = new Date(timeA).toISOString();
             }
 
             try {
-                await updateDoc(doc(db, "survey_links", card.id), { order: newOrderA });
-                await updateDoc(doc(db, "survey_links", targetCard.id), { order: newOrderB });
+                await updateDoc(doc(db, "survey_links", card.id), { createdAt: newCreatedAtA });
+                await updateDoc(doc(db, "survey_links", targetCard.id), { createdAt: newCreatedAtB });
             } catch (e) {
                 window.showToast("Lỗi khi thay đổi thứ tự: " + e.message, "error");
             }
@@ -1310,6 +1359,10 @@
                 ? `<span class="inline-block bg-teal-50 text-teal-700 border border-teal-200 text-xs font-semibold px-2 py-0.5 rounded ml-2 font-mono" title="Thứ tự ưu tiên">#${card.order}</span>` 
                 : '';
             
+            const createdStr = card.createdAt 
+                ? new Date(card.createdAt).toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'}) 
+                : '';
+
             return `
                 <tr class="hover:bg-teal-50/40 transition-colors">
                     <td class="px-4 py-4 whitespace-nowrap text-left w-10">
@@ -1325,7 +1378,10 @@
                         <div class="flex items-center">
                             <div class="w-7 h-7 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm font-bold shadow-sm mr-3">${seqNum}</div>
                             <div class="text-xl mr-3">${emoji}</div>
-                            <div class="text-sm font-bold text-teal-700">${card.title}${orderBadge}</div>
+                            <div>
+                                <div class="text-sm font-bold text-teal-700">${card.title}${orderBadge}</div>
+                                ${createdStr ? `<div class="text-[11px] text-slate-400 mt-0.5"><i class="fa-regular fa-clock mr-1"></i>Tạo lúc: ${createdStr}</div>` : ''}
+                            </div>
                         </div>
                     </td>
                     <td class="px-6 py-4">
