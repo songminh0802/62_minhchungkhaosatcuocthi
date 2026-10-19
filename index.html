@@ -235,6 +235,7 @@
                     <div>
                         <h2 id="content-title" class="text-2xl font-bold text-slate-800"></h2>
                         <p id="content-desc" class="text-slate-500 mt-1"></p>
+                        <div id="content-time-badge" class="mt-2.5 flex flex-wrap items-center gap-2 hidden"></div>
                     </div>
                     <button id="btn-edit-content" class="text-slate-400 hover:text-teal-600 transition" title="Chỉnh sửa nội dung">
                         <i class="fa-solid fa-pen-to-square text-2xl"></i>
@@ -349,14 +350,25 @@
                     <input type="checkbox" id="card-newtab" class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500">
                     <label for="card-newtab" class="ml-2 block text-sm text-slate-700">Mở trong tab mới (Dành cho link minh chứng ngoài)</label>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Đường link (URL)</label>
+                    <input type="text" id="card-link" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="VD: https://app.domain.com">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1 mt-2">Đường link (URL)</label>
-                        <input type="text" id="card-link" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" placeholder="VD: https://app.domain.com">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            <i class="fa-regular fa-calendar-plus text-indigo-500 mr-1"></i>Thời gian bắt đầu
+                        </label>
+                        <input type="datetime-local" id="card-start-time" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" title="Để trống nếu mở ngay">
+                        <span class="text-[11px] text-slate-400">Để trống nếu mở ngay</span>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1 mt-2">Hạn chót (Deadline)</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">
+                            <i class="fa-regular fa-clock text-amber-500 mr-1"></i>Hạn chót (Deadline)
+                        </label>
                         <input type="datetime-local" id="card-deadline" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500" title="Để trống nếu không có hạn">
+                        <span class="text-[11px] text-slate-400">Để trống nếu không giới hạn</span>
                     </div>
                 </div>
 
@@ -837,17 +849,70 @@
             container.innerHTML = html;
         };
 
+        // Hàm tính toán trạng thái và thông tin thời gian bắt đầu & hạn chót
+        function getCardTimeStatus(card) {
+            if (!card || (!card.startTime && !card.deadline)) return null;
+
+            const now = new Date();
+            let stDate = card.startTime ? new Date(card.startTime) : null;
+            let dlDate = card.deadline ? new Date(card.deadline) : null;
+
+            const stStr = stDate ? stDate.toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'}) : '';
+            const dlStr = dlDate ? dlDate.toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'}) : '';
+
+            let status = 'active'; // 'upcoming', 'active', 'expired'
+            let statusText = 'Đang mở';
+            let colorClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
+            let iconClass = 'fa-solid fa-circle-check text-emerald-500';
+
+            if (stDate && now < stDate) {
+                status = 'upcoming';
+                statusText = 'Chưa mở';
+                colorClass = 'text-indigo-700 bg-indigo-50 border-indigo-200';
+                iconClass = 'fa-solid fa-hourglass-start text-indigo-500';
+            } else if (dlDate && now > dlDate) {
+                status = 'expired';
+                statusText = 'Đã hết hạn';
+                colorClass = 'text-red-600 bg-red-50 border-red-200';
+                iconClass = 'fa-solid fa-lock text-red-500';
+            }
+
+            return {
+                status,
+                statusText,
+                colorClass,
+                iconClass,
+                stDate,
+                dlDate,
+                stStr,
+                dlStr,
+                isUpcoming: status === 'upcoming',
+                isExpired: status === 'expired',
+                isActive: status === 'active'
+            };
+        }
+
         // BỘ ĐỊNH TUYẾN CARD CLICK AN TOÀN (Ngăn lỗi nội suy chuỗi JS)
         window.handleCardClick = function(id) {
             const card = allCards.find(c => c.id === id);
             if (!card) return;
 
-            if (card.deadline) {
-                const dlDate = new Date(card.deadline);
-                if (new Date() > dlDate) {
-                    const dlStr = dlDate.toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'});
-                    window.showToast("Minh chứng này đã quá hạn mở vào lúc: " + dlStr, "error");
-                    return;
+            const timeInfo = getCardTimeStatus(card);
+            if (timeInfo) {
+                if (timeInfo.isUpcoming) {
+                    if (!window.isAdminUnlocked) {
+                        window.showToast(`Minh chứng/cuộc thi này chưa mở. Thời gian bắt đầu: ${timeInfo.stStr}`, "warning");
+                        return;
+                    } else {
+                        window.showToast(`Quản trị viên: Đang xem trước (Chưa mở: ${timeInfo.stStr})`, "info");
+                    }
+                } else if (timeInfo.isExpired) {
+                    if (!window.isAdminUnlocked) {
+                        window.showToast(`Minh chứng này đã quá hạn mở vào lúc: ${timeInfo.dlStr}`, "error");
+                        return;
+                    } else {
+                        window.showToast(`Quản trị viên: Đang xem minh chứng đã hết hạn (${timeInfo.dlStr})`, "info");
+                    }
                 }
             }
 
@@ -981,6 +1046,25 @@
             if (e) e.stopPropagation();
             const card = allCards.find(c => c.id === id);
             if (!card || !card.link) return;
+
+            const timeInfo = getCardTimeStatus(card);
+            if (timeInfo) {
+                if (timeInfo.isUpcoming) {
+                    if (!window.isAdminUnlocked) {
+                        window.showToast(`Minh chứng/cuộc thi này chưa mở. Thời gian bắt đầu: ${timeInfo.stStr}`, "warning");
+                        return;
+                    } else {
+                        window.showToast(`Quản trị viên: Đang xem trước (Chưa mở: ${timeInfo.stStr})`, "info");
+                    }
+                } else if (timeInfo.isExpired) {
+                    if (!window.isAdminUnlocked) {
+                        window.showToast(`Minh chứng này đã quá hạn mở vào lúc: ${timeInfo.dlStr}`, "error");
+                        return;
+                    } else {
+                        window.showToast(`Quản trị viên: Đang xem minh chứng đã hết hạn (${timeInfo.dlStr})`, "info");
+                    }
+                }
+            }
 
             window.currentIframeCardId = id;
             const emojiEl = document.getElementById('iframe-emoji');
@@ -1145,6 +1229,44 @@
                     const displayTitle = queryText ? highlightText(card.title, queryText) : card.title;
                     const displayDesc = queryText ? highlightText(card.desc, queryText) : (card.desc || '');
 
+                    const timeInfo = getCardTimeStatus(card);
+                    let timeBadgeHtml = '';
+                    let actionLabel = `<span class="flex items-center">${actionText} <i class="fa-solid fa-arrow-right ml-1.5 transition-transform group-hover:translate-x-1.5"></i></span>`;
+
+                    if (timeInfo) {
+                        if (timeInfo.isUpcoming) {
+                            actionLabel = `<span class="flex items-center text-indigo-600 font-semibold"><i class="fa-solid fa-hourglass-start mr-1.5"></i> Chưa mở</span>`;
+                            timeBadgeHtml = `
+                                <div class="mt-2.5 flex flex-col gap-1">
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${timeInfo.colorClass} shadow-sm w-fit">
+                                        <i class="${timeInfo.iconClass}"></i> Mở: ${timeInfo.stStr}
+                                        <span class="bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">${timeInfo.statusText}</span>
+                                    </div>
+                                    ${timeInfo.dlStr ? `<div class="text-[11px] text-slate-400 pl-1"><i class="fa-regular fa-clock mr-1"></i>Hạn: ${timeInfo.dlStr}</div>` : ''}
+                                </div>
+                            `;
+                        } else if (timeInfo.isExpired) {
+                            actionLabel = `<span class="flex items-center text-red-500 font-semibold"><i class="fa-solid fa-lock mr-1.5"></i> Đã hết hạn</span>`;
+                            timeBadgeHtml = `
+                                <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${timeInfo.colorClass} shadow-sm w-fit">
+                                    <i class="${timeInfo.iconClass}"></i> Hạn: ${timeInfo.dlStr}
+                                    <span class="bg-red-100 text-red-800 text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">${timeInfo.statusText}</span>
+                                </div>
+                            `;
+                        } else {
+                            timeBadgeHtml = `
+                                <div class="mt-2.5 flex flex-col gap-1">
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${timeInfo.colorClass} shadow-sm w-fit">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        ${timeInfo.dlStr ? `Hạn: ${timeInfo.dlStr}` : `Từ: ${timeInfo.stStr}`}
+                                        <span class="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">${timeInfo.statusText}</span>
+                                    </div>
+                                    ${timeInfo.stStr && timeInfo.dlStr ? `<div class="text-[11px] text-slate-400 pl-1"><i class="fa-regular fa-calendar-check mr-1"></i>Bắt đầu: ${timeInfo.stStr}</div>` : ''}
+                                </div>
+                            `;
+                        }
+                    }
+
                     homeHtml += `
                         <div onclick="window.handleCardClick('${card.id}')" class="bg-white rounded-[2rem] shadow-sm hover:shadow-md border border-slate-50 p-6 sm:p-8 relative overflow-hidden flex flex-col text-left group cursor-pointer transition-all duration-300 hover:-translate-y-1 min-h-[260px]">
                             <div class="absolute -top-12 -right-12 w-56 h-56 rounded-full ${theme.blob} opacity-50 blur-[40px] z-0 transition-transform group-hover:scale-110 duration-500"></div>
@@ -1166,14 +1288,7 @@
 
                             <div class="flex-1 relative z-10">
                                 <p class="text-sm text-slate-500 line-clamp-2 mt-1">${displayDesc}</p>
-                                ${(() => {
-                                    if (!card.deadline) return '';
-                                    const dlDate = new Date(card.deadline);
-                                    const isExpired = new Date() > dlDate;
-                                    const dlStr = dlDate.toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'});
-                                    const colorClass = isExpired ? 'text-red-600 bg-red-50 border-red-200' : 'text-amber-600 bg-amber-50 border-amber-200';
-                                    return `<div class="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded text-[11px] font-semibold border ${colorClass} shadow-sm"><i class="fa-regular fa-clock"></i> Hạn: ${dlStr} ${isExpired ? '(Đã hết hạn)' : ''}</div>`;
-                                })()}
+                                ${timeBadgeHtml}
                             </div>
 
                             <div class="w-full h-1.5 bg-slate-100 rounded-full mb-4 mt-6 relative z-10 overflow-hidden">
@@ -1181,7 +1296,7 @@
                             </div>
 
                             <div class="text-sm font-bold ${theme.textColor} flex items-center justify-between relative z-10">
-                                <span class="flex items-center">${actionText} <i class="fa-solid fa-arrow-right ml-1.5 transition-transform group-hover:translate-x-1.5"></i></span>
+                                ${actionLabel}
                             </div>
                         </div>
                     `;
@@ -1217,6 +1332,24 @@
             
             document.getElementById('content-title').innerText = child.title;
             document.getElementById('content-desc').innerText = child.desc || '';
+            
+            const timeBadgeContainer = document.getElementById('content-time-badge');
+            if (timeBadgeContainer) {
+                const timeInfo = getCardTimeStatus(child);
+                if (timeInfo) {
+                    timeBadgeContainer.innerHTML = `
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border ${timeInfo.colorClass}">
+                            <i class="${timeInfo.iconClass}"></i> ${timeInfo.statusText}
+                        </div>
+                        ${timeInfo.stStr ? `<span class="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg"><i class="fa-regular fa-calendar-check mr-1 text-slate-400"></i>Bắt đầu: <b>${timeInfo.stStr}</b></span>` : ''}
+                        ${timeInfo.dlStr ? `<span class="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg"><i class="fa-regular fa-clock mr-1 text-slate-400"></i>Hạn chót: <b>${timeInfo.dlStr}</b></span>` : ''}
+                    `;
+                    timeBadgeContainer.classList.remove('hidden');
+                } else {
+                    timeBadgeContainer.innerHTML = '';
+                    timeBadgeContainer.classList.add('hidden');
+                }
+            }
             
             const htmlData = allTabContents[child.id] ? allTabContents[child.id].html : '<p class="italic text-slate-400">Nội dung chưa được cập nhật. Nhấn vào biểu tượng bút góc phải phía trên để chỉnh sửa nội dung chi tiết hoặc hướng dẫn sử dụng App này.</p>';
             
@@ -1256,6 +1389,7 @@
                     document.getElementById('card-desc').value = card.desc || '';
                     document.getElementById('card-link').value = card.link || '';
                     document.getElementById('card-newtab').checked = card.newTab || false;
+                    document.getElementById('card-start-time').value = card.startTime || '';
                     document.getElementById('card-deadline').value = card.deadline || '';
                     document.getElementById('card-order').value = (card.order !== undefined && card.order !== null) ? card.order : '';
                 }
@@ -1359,6 +1493,11 @@
                 ? `<span class="inline-block bg-teal-50 text-teal-700 border border-teal-200 text-xs font-semibold px-2 py-0.5 rounded ml-2 font-mono" title="Thứ tự ưu tiên">#${card.order}</span>` 
                 : '';
             
+            const timeInfo = getCardTimeStatus(card);
+            const timeBadgeAdmin = timeInfo 
+                ? `<span class="inline-block ${timeInfo.colorClass} text-[10px] font-bold px-1.5 py-0.5 rounded ml-1.5 shadow-sm">${timeInfo.statusText}</span>` 
+                : '';
+
             const createdStr = card.createdAt 
                 ? new Date(card.createdAt).toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'}) 
                 : '';
@@ -1379,7 +1518,7 @@
                             <div class="w-7 h-7 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm font-bold shadow-sm mr-3">${seqNum}</div>
                             <div class="text-xl mr-3">${emoji}</div>
                             <div>
-                                <div class="text-sm font-bold text-teal-700">${card.title}${orderBadge}</div>
+                                <div class="text-sm font-bold text-teal-700 flex items-center flex-wrap">${card.title}${orderBadge}${timeBadgeAdmin}</div>
                                 ${createdStr ? `<div class="text-[11px] text-slate-400 mt-0.5"><i class="fa-regular fa-clock mr-1"></i>Tạo lúc: ${createdStr}</div>` : ''}
                             </div>
                         </div>
@@ -1387,6 +1526,7 @@
                     <td class="px-6 py-4">
                         <div class="text-sm text-slate-700">${card.desc || '<i class="text-slate-400">Không có</i>'}</div>
                         ${card.link ? `<div class="text-xs text-blue-500 truncate mt-1"><i class="fa-solid fa-link mr-1"></i>${card.link}</div>` : ''}
+                        ${card.startTime ? `<div class="text-xs text-indigo-600 truncate mt-1"><i class="fa-regular fa-calendar-plus mr-1"></i>Bắt đầu: ${new Date(card.startTime).toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'})}</div>` : ''}
                         ${card.deadline ? `<div class="text-xs text-amber-600 truncate mt-1"><i class="fa-regular fa-clock mr-1"></i>Hạn chót: ${new Date(card.deadline).toLocaleString('vi-VN', {hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit', year: 'numeric'})}</div>` : ''}
                     </td>
                 </tr>
@@ -1435,13 +1575,25 @@
                 emojiVal = defaultEmojis[Math.floor(Math.random() * defaultEmojis.length)];
             }
             
+            const startTimeVal = document.getElementById('card-start-time').value || null;
+            const deadlineVal = document.getElementById('card-deadline').value || null;
+
+            if (startTimeVal && deadlineVal) {
+                if (new Date(startTimeVal) > new Date(deadlineVal)) {
+                    window.showToast("Thời gian bắt đầu không thể diễn ra sau hạn chót!", "error");
+                    btnSave.disabled = false; btnSave.innerHTML = '<i class="fa-solid fa-save"></i> Lưu';
+                    return;
+                }
+            }
+            
             const cardData = {
                 emoji: emojiVal,
                 title: document.getElementById('card-title').value,
                 desc: document.getElementById('card-desc').value,
                 link: document.getElementById('card-link').value,
                 newTab: document.getElementById('card-newtab').checked,
-                deadline: document.getElementById('card-deadline').value || null,
+                startTime: startTimeVal,
+                deadline: deadlineVal,
                 order: orderVal !== '' ? Number(orderVal) : null
             };
 
