@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản trị & Thống kê - Nộp minh chứng công việc</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Google Firebase SDK v8.10.1 (Quy chuẩn dang-nhap-google-webapp) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<style>
+:root{
+  --bg:#F2F3EE; --card:#FFFFFF; --ink:#1B2624; --muted:#5E6B67; --line:#D8DCD5;
+  --brand:#1F4D45; --brand-dark:#173A34; --chalk:#E8B931; --err:#B3361F; --errbg:#FBEAE6;
+  --success:#137333; --successbg:#E6F4EA; --blue:#1A73E8; --bluebg:#E8F0FE;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+
+header{background:var(--brand);color:#fff;padding:14px 20px 16px;border-bottom:4px solid var(--chalk);box-shadow:0 2px 8px rgba(0,0,0,.08)}
+header .inner{max-width:920px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+header .school{margin:0 0 2px;font-size:13px;opacity:.9;font-weight:500}
+header h1{margin:0;font-size:20px;line-height:1.25;font-weight:700}
+.header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.header-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.32);padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .18s ease;white-space:nowrap;backdrop-filter:blur(4px)}
+.header-btn:hover{background:rgba(255,255,255,.26);transform:translateY(-1px)}
+.header-btn:active{transform:translateY(0)}
+.header-btn.btn-home{background:rgba(232,185,49,.25);border-color:#E8B931;color:#fff;font-weight:700}
+.header-btn.btn-home:hover{background:rgba(232,185,49,.4)}
+
+/* Profile người dùng Google trên header */
+.user-profile{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);padding:3px 12px 3px 4px;border-radius:24px;border:1px solid rgba(255,255,255,.22)}
+.user-avatar{width:30px;height:30px;border-radius:50%;object-fit:cover;border:1.5px solid #fff;background:#fff}
+.user-info{display:flex;flex-direction:column;line-height:1.15;text-align:left}
+.user-name{font-size:12px;font-weight:700;color:#fff;max-width:130px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role-badge{font-size:10px;color:#FFE082;font-weight:600}
+
+main{max-width:920px;margin:0 auto;padding:20px 16px 48px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:18px;box-shadow:0 2px 5px rgba(0,0,0,.04)}
+label,.lbl{display:block;font-weight:600;font-size:15px;margin:0 0 6px}
+.field{margin-bottom:16px}
+select,input[type=text],input[type=password],textarea{width:100%;font:inherit;color:inherit;background:#fff;border:1px solid #B9C0B8;border-radius:8px;padding:12px;min-height:48px}
+textarea{resize:vertical;min-height:84px}
+select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-visible{outline:3px solid var(--chalk);outline-offset:2px}
+.hint{color:var(--muted);font-size:13px;margin:6px 0 0}
+
+.primary{min-height:48px;border:0;border-radius:10px;background:var(--brand);color:#fff;font:inherit;font-weight:600;font-size:16px;cursor:pointer;padding:0 20px;transition:background .15s ease}
+.primary:hover{background:var(--brand-dark)}
+.primary:disabled{opacity:.6;cursor:wait}
+.secondary{min-height:48px;border:1px solid var(--brand);background:#fff;color:var(--brand);font:inherit;font-weight:600;border-radius:10px;cursor:pointer;padding:0 18px;transition:background .15s ease}
+.secondary:hover{background:#F4F8F6}
+.msg{margin:0 0 14px;padding:12px;border-radius:8px;background:var(--errbg);color:var(--err);font-size:15px}
+.center{text-align:center;padding:36px 18px}
+.spin{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--brand);border-radius:50%;margin:0 auto 12px;animation:r .8s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+
+/* Khung đăng nhập Google */
+.login-box{max-width:440px;margin:36px auto;text-align:center}
+.login-icon{width:64px;height:64px;border-radius:50%;background:#E1EFEA;color:var(--brand);font-size:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+
+/* Nút đăng nhập Google chuẩn thương hiệu */
+.btn-google{display:inline-flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:50px;background:#FFFFFF;color:#3c4043;border:1px solid #dadce0;border-radius:10px;font:inherit;font-weight:600;font-size:15px;cursor:pointer;padding:0 20px;box-shadow:0 1px 3px rgba(60,64,67,.08);transition:all .2s ease}
+.btn-google:hover{background:#F8F9FA;border-color:#c0c4c9;box-shadow:0 2px 8px rgba(60,64,67,.18);transform:translateY(-1px)}
+.btn-google:active{transform:translateY(0);background:#eeeeee}
+.btn-google:disabled{opacity:.7;cursor:wait}
+
+/* Khung Từ chối truy cập (Access Denied) */
+.denied-box{max-width:480px;margin:36px auto;text-align:center}
+.denied-icon{width:68px;height:68px;border-radius:50%;background:var(--errbg);color:var(--err);font-size:34px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+
+/* Topbar bảng điều khiển */
+.admin-topbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.admin-btn{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;border:0}
+.admin-btn-primary{background:var(--brand);color:#fff}
+.admin-btn-primary:hover{background:var(--brand-dark)}
+.admin-btn-outline{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+.admin-btn-outline:hover{background:#F4F8F6}
+.admin-btn-subtle{background:#EAECE7;color:var(--ink)}
+.admin-btn-subtle:hover{background:#DFE2DC}
+
+/* 4 Thẻ KPI */
+.admin-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}
+@media (max-width:680px){.admin-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{background:#FAFBF9;border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px}
+.kpi-icon{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.kpi-info{flex:1}
+.kpi-val{font-size:24px;font-weight:700;line-height:1.2;color:var(--ink)}
+.kpi-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* Thanh tiến trình */
+.progress-bar-bg{height:10px;background:#E1E8E4;border-radius:999px;overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg, #1F4D45, #388E3C);border-radius:999px;transition:width .25s ease}
+
+/* Tiến độ theo Tổ */
+.group-stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.group-stat-chip{background:#FAFBF9;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.group-stat-head{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:8px}
+.group-stat-bar{height:6px;background:#E1E8E4;border-radius:999px;overflow:hidden}
+.group-stat-fill{height:100%;background:var(--brand);border-radius:999px;transition:width .2s ease}
+
+/* Tabs */
+.admin-tabs{display:flex;gap:10px;border-bottom:2px solid var(--line);margin:24px 0 18px}
+.admin-tab{padding:12px 20px;border:0;background:transparent;font-size:15px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
+.admin-tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+
+/* Hộp sao chép Zalo */
+.zalo-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.btn-zalo{background:#0068FF;color:#fff;border:0;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,104,255,.3);transition:background .15s ease}
+.btn-zalo:hover{background:#0053cc}
+
+/* Danh sách GV */
+.gv-list{display:flex;flex-direction:column;gap:10px}
+.gv-row{background:#FAFBF9;border:1px solid var(--line);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.gv-sub-item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.btn-del-sub{background:#FCE8E6;color:#C5221F;border:1px solid #FAD2CF;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:background .15s}
+.btn-del-sub:hover{background:#F8CCC7}
+.btn-sm-view{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;min-height:36px;display:inline-flex;align-items:center;gap:6px;background:#E1EFEA;color:#1F4D45;border:1px solid #B8DDD2;cursor:pointer;white-space:nowrap;transition:background .15s ease}
+.btn-sm-view:hover{background:#1F4D45;color:#fff}
+.recent-note{font-size:13px;color:#4A5552;background:#F9FAF8;padding:8px 12px;border-radius:6px;border:1px dashed #D8DCD5;font-style:italic}
+
+/* Nhãn Badge */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:9999px;font-size:12px;font-weight:600;line-height:1.2;white-space:nowrap}
+.badge-active{background:#E6F4EA;color:#137333;border:1px solid #CEEAD6}
+.badge-warning{background:#FEF7E0;color:#B06000;border:1px solid #FEEFC3}
+.badge-expired{background:#FCE8E6;color:#C5221F;border:1px solid #FAD2CF}
+.badge-upcoming{background:#E8F0FE;color:#1A73E8;border:1px solid #D2E3FC}
+.badge-done{background:#E1EFEA;color:#1F4D45;border:1px solid #B8DDD2}
+
+/* Modals */
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,28,25,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;animation:fadeIn .2s ease-out}
+.modal-box{background:#fff;border-radius:18px;max-width:440px;width:100%;padding:26px 22px 22px;text-align:center;box-shadow:0 20px 45px rgba(0,0,0,.28),0 0 0 1px rgba(0,0,0,.06);animation:popIn .25s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+.modal-icon{width:60px;height:60px;border-radius:50%;background:#FEF3D6;color:#C07D00;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 14px}
+.modal-icon.error{background:#FBEAE6;color:#B3361F}
+.modal-title{margin:0 0 10px;font-size:19px;font-weight:700;color:#1B2624}
+.modal-msg{font-size:15px;line-height:1.55;color:#384542;margin-bottom:22px;word-break:break-word}
+.modal-btn{width:100%;min-height:48px;border:0;border-radius:10px;background:var(--brand);color:#fff;font:inherit;font-weight:600;font-size:16px;cursor:pointer}
+.viewer-close{background:transparent;border:0;font-size:26px;line-height:1;color:var(--muted);cursor:pointer;padding:4px}
+
+/* Modal Xem ảnh & Lightbox */
+.modal-viewer{max-width:560px;text-align:left;max-height:90vh;overflow-y:auto;padding:22px}
+.viewer-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.viewer-title{font-size:18px;font-weight:700;margin:0;color:var(--ink)}
+.viewer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:14px 0}
+.viewer-thumb-card{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#E9ECE6;border:1px solid var(--line);cursor:pointer}
+.viewer-thumb-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s ease}
+.viewer-thumb-card:hover img{transform:scale(1.05)}
+.viewer-open-badge{position:absolute;bottom:4px;right:4px;background:rgba(27,38,36,.85);color:#fff;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px}
+
+.lightbox-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;z-index:10000;animation:fadeIn .15s ease-out}
+.lightbox-img{max-width:96vw;max-height:82vh;object-fit:contain;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.lightbox-bar{margin-top:12px;display:flex;align-items:center;gap:12px;color:#fff;font-size:14px}
+.lightbox-btn{background:rgba(255,255,255,.2);color:#fff;border:0;padding:6px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}
+.lightbox-btn:hover{background:rgba(255,255,255,.3)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1B2624;color:#fff;padding:11px 24px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 10px 25px rgba(0,0,0,.25);z-index:99999;animation:toastIn .2s ease-out;display:flex;align-items:center;gap:8px}
+@keyframes toastIn{from{bottom:10px;opacity:0}to{bottom:24px;opacity:1}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button type="button" id="goHomeBtn" class="header-btn btn-home" title="Quay về Trang chủ (Nộp minh chứng)">
+        <span style="font-size:16px;">🏠</span>
+        <span>Trang chủ</span>
+      </button>
+      <div>
+        <p class="school" id="school">Trường THCS Vĩnh Tân</p>
+        <h1>Bảng Quản trị & Thống kê</h1>
+      </div>
+    </div>
+    <div class="header-actions">
+      <!-- Thông tin tài khoản Admin sau khi đăng nhập Google -->
+      <div id="userProfile" class="user-profile" style="display:none;">
+        <img id="userAvatar" class="user-avatar" src="" alt="Avatar">
+        <div class="user-info">
+          <span id="userName" class="user-name">Admin</span>
+          <span class="user-role-badge">🛡️ Quản trị viên</span>
+        </div>
+      </div>
+      <button type="button" id="logoutBtn" class="header-btn" style="display:none;" title="Đăng xuất khỏi phiên quản trị">
+        🚪 Đăng xuất
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 1. Màn hình Đăng nhập bằng Google -->
+  <section id="loginView" class="card login-box">
+    <div class="login-icon">🔐</div>
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:var(--brand);">Đăng nhập Quản trị viên</h2>
+    <p class="hint" style="margin:0 0 22px;line-height:1.5;">Dành riêng cho Ban Giám Hiệu theo dõi và quản lý tiến độ nộp minh chứng</p>
+
+    <button type="button" id="googleLoginBtn" class="btn-google">
+      <svg width="20" height="20" viewBox="0 0 24 24" style="flex-shrink:0;">
+        <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z"/>
+        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.13C3.27 21.39 7.34 24 12 24z"/>
+        <path fill="#FBBC05" d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.13z"/>
+        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.27 2.61 1.26 6.58l4.02 3.13c.95-2.83 3.6-4.96 6.72-4.96z"/>
+      </svg>
+      <span>Đăng nhập với Google</span>
+    </button>
+
+    <!-- Đường dẫn chuyển sang đăng nhập bằng mã PIN dự phòng -->
+    <div style="margin:16px 0 12px;display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;height:1px;background:#D8DCD5;"></div>
+      <span style="font-size:12px;color:var(--muted);font-weight:600;">HOẶC</span>
+      <div style="flex:1;height:1px;background:#D8DCD5;"></div>
+    </div>
+
+    <button type="button" id="togglePinLoginBtn" class="secondary" style="width:100%;min-height:44px;font-size:14px;">
+      🔑 Đăng nhập bằng mã PIN Quản trị (Dự phòng)
+    </button>
+
+    <!-- Khung nhập mã PIN (hiện khi bấm nút hoặc khi Google OAuth không hỗ trợ) -->
+    <div id="pinBox" style="display:none;margin-top:16px;text-align:left;background:#F9FAF8;border:1px solid #D8DCD5;border-radius:10px;padding:14px;">
+      <label for="pinInput" style="font-size:13px;font-weight:700;color:var(--brand);margin-bottom:6px;display:block;">Nhập mã PIN Quản trị (Dự phòng):</label>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="pinInput" placeholder="Mã PIN" maxlength="15" inputmode="numeric" style="flex:1;min-height:44px;font-size:18px;letter-spacing:4px;text-align:center;font-weight:700;">
+        <button type="button" id="pinLoginBtn" class="primary" style="min-height:44px;padding:0 18px;font-size:14px;white-space:nowrap;">Xác nhận</button>
+      </div>
+      <div id="pinErr" style="color:var(--err);font-size:13px;margin-top:6px;display:none;"></div>
+    </div>
+
+    <div style="margin-top:20px;padding:12px 14px;background:#F8FAF9;border:1px dashed #C2D1CC;border-radius:10px;font-size:13px;color:var(--muted);text-align:left;line-height:1.5;">
+      <span style="font-weight:700;color:var(--brand);">🔒 Quyền truy cập:</span>
+      Chỉ tài khoản Google Quản trị viên (<b>songminh138@gmail.com</b>) hoặc người có mã PIN Quản trị mới được phép truy cập.
+    </div>
+
+    <div style="margin-top:18px;">
+      <button type="button" id="loginBackHomeBtn" class="secondary" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+        <span>🏠</span>
+        <span>Quay về Trang chủ</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 2. Màn hình Từ chối truy cập (Không đúng tài khoản Admin) -->
+  <section id="deniedView" class="card denied-box" hidden>
+    <div class="denied-icon">🚫</div>
+    <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:var(--err);">Truy cập bị từ chối</h2>
+    <div style="background:var(--errbg);border:1px solid #F5C6CB;border-radius:10px;padding:14px;margin:16px 0;font-size:14px;line-height:1.6;color:#721C24;text-align:left;">
+      <div>Tài khoản Google: <b id="deniedEmailText" style="word-break:break-all;"></b></div>
+      <div style="margin-top:6px;">⚠️ Tài khoản này <b>không có quyền Quản trị</b> hệ thống minh chứng.</div>
+      <div style="margin-top:4px;font-size:13px;color:#856404;">Vui lòng liên hệ Quản trị viên (<b>songminh138@gmail.com</b>) hoặc đăng nhập bằng mã PIN Quản trị.</div>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-direction:column;">
+      <button type="button" id="deniedUsePinBtn" class="primary" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+        <span>🔑</span>
+        <span>Đăng nhập bằng mã PIN Quản trị</span>
+      </button>
+      <button type="button" id="switchAccountBtn" class="secondary" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+        <span>🔄</span>
+        <span>Đăng nhập tài khoản Google khác</span>
+      </button>
+      <button type="button" id="deniedBackHomeBtn" class="secondary" style="width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+        <span>🏠</span>
+        <span>Quay về Trang chủ</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 3. Màn hình Đang tải dữ liệu -->
+  <section id="loadingView" class="card center" hidden>
+    <div class="spin"></div>
+    <div style="font-weight:600;color:var(--brand);">Đang xác thực và tải dữ liệu Quản trị…</div>
+  </section>
+
+  <!-- 4. Màn hình Bảng Quản trị (Sau khi đăng nhập thành công) -->
+  <section id="dashboardView" class="card" hidden>
+    <!-- Thanh điều khiển trên cùng -->
+    <div class="admin-topbar">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:22px;">📊</span>
+          <h2 style="margin:0;font-size:19px;font-weight:700;color:var(--brand);" id="dashboardTitle">Tiến độ nộp minh chứng</h2>
+        </div>
+        <p style="margin:2px 0 0;font-size:13px;color:var(--muted);">Dữ liệu cập nhật trực tiếp theo thời gian thực từ Google Sheets</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" id="topbarHomeBtn" class="admin-btn admin-btn-subtle" title="Quay về Trang chủ">🏠 Trang chủ</button>
+        <button type="button" id="addJobBtn" class="admin-btn admin-btn-primary">➕ Thêm việc mới</button>
+        <button type="button" id="refreshBtn" class="admin-btn admin-btn-outline">🔄 Làm mới</button>
+      </div>
+    </div>
+
+    <!-- Bộ lọc công việc -->
+    <div class="field" style="margin-top:18px;">
+      <label for="jobSelect" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>🎯 Chọn công việc cần xem thống kê:</span>
+        <span id="jobStatusBadge" class="badge badge-active">Đang mở</span>
+      </label>
+      <select id="jobSelect" style="font-weight:600;font-size:15px;"></select>
+    </div>
+
+    <!-- 4 Thẻ KPI Tổng quan -->
+    <div class="admin-kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#EBF3FE;color:#1A73E8;">👥</div>
+        <div class="kpi-info">
+          <div class="kpi-val" id="kpiTotal">0</div>
+          <div class="kpi-lbl">Tổng giáo viên</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#E6F4EA;color:#137333;">✅</div>
+        <div class="kpi-info">
+          <div class="kpi-val" id="kpiSubmitted" style="color:#137333;">0</div>
+          <div class="kpi-lbl">Đã nộp</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#FCE8E6;color:#C5221F;">⏳</div>
+        <div class="kpi-info">
+          <div class="kpi-val" id="kpiUnsubmitted" style="color:#C5221F;">0</div>
+          <div class="kpi-lbl">Chưa nộp</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#FEF7E0;color:#B06000;">📈</div>
+        <div class="kpi-info">
+          <div class="kpi-val" id="kpiPercent">0%</div>
+          <div class="kpi-lbl">Tỷ lệ hoàn thành</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tiến độ toàn trường -->
+    <div style="margin:16px 0 22px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px;">
+        <span style="color:var(--brand);">Tiến độ toàn trường: <span id="progressText">0/0</span></span>
+        <span id="percentText" style="color:var(--brand);">0%</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div id="progressBarFill" class="progress-bar-fill" style="width:0%;"></div>
+      </div>
+    </div>
+
+    <!-- Tiến độ theo từng Tổ / Bộ môn -->
+    <div style="margin-bottom:24px;">
+      <h3 style="font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+        <span>🏢 Tiến độ theo Tổ / Bộ môn</span>
+      </h3>
+      <div id="groupStatsGrid" class="group-stats-grid"></div>
+    </div>
+
+    <!-- Tabs Danh sách Chưa nộp & Đã nộp -->
+    <div class="admin-tabs">
+      <button type="button" class="admin-tab active" id="tabUnsubBtn">
+        ⏳ Chưa nộp (<span id="tabUnsubCount">0</span>)
+      </button>
+      <button type="button" class="admin-tab" id="tabSubBtn">
+        ✅ Đã nộp (<span id="tabSubCount">0</span>)
+      </button>
+    </div>
+
+    <!-- Tab 1: Danh sách Chưa nộp + Nút Copy Zalo -->
+    <div id="tabUnsubContent">
+      <div class="zalo-box">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:10px;background:#0068FF;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;flex-shrink:0;">Z</div>
+          <div>
+            <b style="font-size:15px;color:#0F4C81;">Nhắc nhở qua Zalo</b>
+            <div style="font-size:13px;color:var(--muted);">Sao chép danh sách Thầy/Cô chưa nộp để gửi vào nhóm Zalo trường / tổ</div>
+          </div>
+        </div>
+        <button type="button" id="copyZaloBtn" class="btn-zalo">
+          📋 Sao chép danh sách gửi Zalo
+        </button>
+      </div>
+
+      <div id="unsubmittedList" class="gv-list"></div>
+    </div>
+
+    <!-- Tab 2: Danh sách Đã nộp + Mở khóa nộp lại -->
+    <div id="tabSubContent" style="display:none;">
+      <div id="submittedList" class="gv-list"></div>
+    </div>
+  </section>
+
+  <!-- Modal Cảnh Báo -->
+  <div id="alertModal" class="modal-backdrop" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-icon error" id="modalIcon">⚠️</div>
+      <h3 id="modalTitle" class="modal-title">Cảnh báo</h3>
+      <div id="modalMessage" class="modal-msg"></div>
+      <button type="button" class="modal-btn" id="modalCloseBtn">Đã hiểu</button>
+    </div>
+  </div>
+
+  <!-- Modal Thêm Công Việc Mới -->
+  <div id="addJobModal" class="modal-backdrop" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true" style="max-width:440px;text-align:left;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:10px;">
+        <h3 style="margin:0;font-size:18px;font-weight:700;color:var(--brand);">➕ Thêm công việc mới</h3>
+        <button type="button" id="addJobCloseBtn" class="viewer-close">&times;</button>
+      </div>
+
+      <div class="field">
+        <label for="newJobName">Tên công việc <span style="color:var(--err);">*</span></label>
+        <textarea id="newJobName" placeholder="Vd: Nộp minh chứng kiểm tra giáo án Giữa kỳ 1" rows="2" style="min-height:60px;"></textarea>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" class="field">
+        <div>
+          <label for="newJobStartDate">Ngày bắt đầu</label>
+          <input type="text" id="newJobStartDate" placeholder="dd/mm/yyyy">
+        </div>
+        <div>
+          <label for="newJobEndDate">Ngày kết thúc</label>
+          <input type="text" id="newJobEndDate" placeholder="dd/mm/yyyy">
+        </div>
+      </div>
+      <p class="hint" style="margin:-6px 0 16px;">Định dạng ngày: dd/mm/yyyy (vd: 25/10/2026)</p>
+
+      <div id="addJobErr" class="msg" style="display:none;margin-bottom:12px;"></div>
+
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="secondary" id="addJobCancelBtn" style="flex:1;">Hủy</button>
+        <button type="button" class="primary" id="addJobSubmitBtn" style="flex:1;">Lưu công việc</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Xem Minh Chứng Đã Nộp -->
+  <div id="evidenceModal" class="modal-backdrop" hidden>
+    <div class="modal-box modal-viewer" role="dialog" aria-modal="true" aria-labelledby="evidenceTitle">
+      <div class="viewer-head">
+        <h3 id="evidenceTitle" class="viewer-title">Minh chứng đã nộp</h3>
+        <button type="button" class="viewer-close" id="evidenceCloseBtn" aria-label="Đóng">&times;</button>
+      </div>
+
+      <div style="background:#F6F8F6;border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid #E1E8E4;font-size:13px;line-height:1.6;">
+        <div style="font-weight:700;font-size:15px;color:var(--brand);margin-bottom:4px;" id="evJobName"></div>
+        <div><span style="color:var(--muted);">Giáo viên:</span> <b id="evTeacherName"></b></div>
+        <div><span style="color:var(--muted);">Thời gian nộp:</span> <span id="evTime"></span></div>
+        <div id="evDateBox"><span style="color:var(--muted);">Thời hạn công việc:</span> <span id="evDate"></span></div>
+        <div id="evNoteRow" style="display:none;margin-top:6px;padding-top:6px;border-top:1px dashed #D8DCD5;">
+          <span style="color:var(--muted);">Ghi chú:</span> <i id="evNoteText"></i>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-weight:600;font-size:14px;">Ảnh minh chứng (<span id="evPhotoCount">0</span> ảnh)</div>
+        <span style="font-size:12px;color:var(--muted);">Bấm vào ảnh để phóng to</span>
+      </div>
+
+      <div id="evThumbsGrid" class="viewer-grid"></div>
+
+      <div style="margin-top:16px;display:flex;gap:10px;">
+        <button type="button" class="secondary" id="evCloseBottomBtn" style="flex:1;min-height:44px;">Đóng</button>
+        <a id="evOpenDriveLink" href="#" target="_blank" class="primary" style="flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:14px;">
+          Mở trên Google Drive ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Phóng To Ảnh (Lightbox) -->
+  <div id="lightboxModal" class="lightbox-backdrop" hidden>
+    <div style="position:absolute;top:16px;right:16px;display:flex;gap:10px;z-index:10001;">
+      <a id="lightboxDriveBtn" href="#" target="_blank" class="lightbox-btn" style="text-decoration:none;">Mở ảnh gốc ↗</a>
+      <button type="button" id="lightboxCloseBtn" class="lightbox-btn" style="font-size:20px;padding:4px 14px;">&times;</button>
+    </div>
+    <img id="lightboxImg" class="lightbox-img" src="" alt="Ảnh minh chứng">
+    <div class="lightbox-bar" id="lightboxCaption"></div>
+  </div>
+
+  <!-- Toast thông báo -->
+  <div id="toast" class="toast" style="display:none;"></div>
+</main>
+
+<script>
+// Tự động chuyển về index.html nếu truy vấn có ?page=index hoặc ?page=home
+(function () {
+  var isGas = (window.location.hostname.indexOf('googleusercontent.com') !== -1 ||
+               window.location.hostname.indexOf('script.google.com') !== -1 ||
+               (typeof google !== 'undefined' && typeof google.script !== 'undefined'));
+  if (!isGas) {
+    var search = window.location.search || '';
+    if (search.indexOf('page=index') !== -1 || search.indexOf('page=home') !== -1) {
+      window.location.replace('index.html');
+    }
+  }
+})();
+
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCtrvwU1dGIYBjk8DeoHfJcJ05R_twuF2KdeLAI5N7XuFIqlThu8EXqcFuc21kzGMo/exec';
+
+var $ = function (id) { return document.getElementById(id); };
+var state = {
+  adminAuth: '',
+  adminData: null,
+  currentJob: '',
+  currentUser: null,
+  today: new Date().toISOString().slice(0, 10)
+};
+
+/* ================== CẤU HÌNH FIREBASE AUTH & FIRESTORE ================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBVueYYokJdqm_uCMqBL24d6YCtMTamCM8",
+  authDomain: "csdlsongminh.firebaseapp.com",
+  databaseURL: "https://csdlsongminh-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "csdlsongminh",
+  storageBucket: "csdlsongminh.firebasestorage.app",
+  messagingSenderId: "319501136448",
+  appId: "1:319501136448:web:1c2a9a1b5582d3a9f725a5",
+  measurementId: "G-VPPH1RXD7H"
+};
+
+const ADMIN_EMAIL = "songminh138@gmail.com";
+const USERS_COLLECTION = "users_62_nopanhminhchung";
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+var toastTimer = null;
+function showToast(msg) {
+  var t = $('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.display = 'flex';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () {
+    t.style.display = 'none';
+  }, 2600);
+}
+
+function showAlert(msg, title, isError) {
+  if (!msg) {
+    $('alertModal').hidden = true;
+    document.body.style.overflow = '';
+    return;
+  }
+  var modal = $('alertModal');
+  var icon = $('modalIcon');
+  var tit = $('modalTitle');
+  var mMsg = $('modalMessage');
+
+  tit.textContent = title || 'Cảnh báo';
+  mMsg.innerHTML = String(msg).replace(/\n/g, '<br>');
+
+  if (isError !== false) {
+    icon.textContent = '⚠️';
+    icon.className = 'modal-icon error';
+  } else {
+    icon.textContent = 'ℹ️';
+    icon.className = 'modal-icon';
+  }
+
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+  setTimeout(function () {
+    var btn = $('modalCloseBtn');
+    if (btn) btn.focus();
+  }, 50);
+}
+
+$('modalCloseBtn').addEventListener('click', function () {
+  $('alertModal').hidden = true;
+  document.body.style.overflow = '';
+});
+
+async function call(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+
+  // 1. Chạy trong GAS (google.script.run)
+  if (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run[fn] === 'function') {
+    return new Promise(function (res, rej) {
+      var r = google.script.run.withSuccessHandler(res).withFailureHandler(rej);
+      r[fn].apply(r, args);
+    });
+  }
+
+  // 2. Chạy qua REST API
+  var payload = { action: fn };
+  if (fn === 'adminVerifyPin') {
+    payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
+  } else if (fn === 'getAdminDashboard') {
+    payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
+    payload.jobName = args[1] || '';
+  } else if (fn === 'adminAddJob') {
+    payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
+    payload.jobData = args[1] || {};
+  } else if (fn === 'adminDeleteSubmission') {
+    payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
+    payload.rowIndex = args[1] || 0;
+    payload.jobName = args[2] || '';
+    payload.gvName = args[3] || '';
+  } else {
+    payload.args = args;
+  }
+
+  var res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    throw new Error('Máy chủ phản hồi mã lỗi HTTP: ' + res.status);
+  }
+
+  var json = await res.json();
+  if (json.status === 'error' || json.error) {
+    throw new Error(json.message || json.error || 'Lỗi xử lý từ máy chủ');
+  }
+  return json.data !== undefined ? json.data : json;
+}
+
+function formatVN(dStr) {
+  if (!dStr) return '';
+  var parts = String(dStr).split('-');
+  return parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : dStr;
+}
+
+function padZero(n) {
+  return n < 10 ? '0' + n : '' + n;
+}
+
+function formatVNTime(t) {
+  if (!t) return '';
+  if (t instanceof Date) {
+    return padZero(t.getDate()) + '/' + padZero(t.getMonth() + 1) + '/' + t.getFullYear() + ' ' +
+           padZero(t.getHours()) + ':' + padZero(t.getMinutes()) + ':' + padZero(t.getSeconds());
+  }
+  var s = String(t).trim();
+  if (!s) return '';
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}(\s+\d{1,2}:\d{1,2}(:\d{1,2})?)?$/.test(s)) {
+    return s;
+  }
+  var mTimeFirst = s.match(/^(\d{1,2}:\d{1,2}(?::\d{1,2})?)\s+(\d{1,2}\/\d{1,2}\/\d{4})$/);
+  if (mTimeFirst) {
+    return mTimeFirst[2] + ' ' + mTimeFirst[1];
+  }
+  if (s.indexOf('GMT') >= 0 || s.indexOf('T') >= 0 || /^[A-Za-z]{3}\s/.test(s)) {
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      return padZero(d.getDate()) + '/' + padZero(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' +
+             padZero(d.getHours()) + ':' + padZero(d.getMinutes()) + ':' + padZero(d.getSeconds());
+    }
+  }
+  return s;
+}
+
+function extractDriveIdClient(url) {
+  if (!url) return '';
+  var m = String(url).match(/\/d\/([a-zA-Z0-9_-]+)/) || String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : '';
+}
+
+function getJobDeadlineInfo(job, todayStr) {
+  if (!job) return { status: 'none', label: '', shortLabel: '', badgeClass: 'badge-muted', icon: '' };
+  var today = todayStr || state.today;
+  var start = job.startDate || '';
+  var end = job.endDate || '';
+
+  if (!end) {
+    return { status: 'none', label: 'Không thời hạn', shortLabel: 'Không thời hạn', badgeClass: 'badge-muted', icon: '⚪' };
+  }
+
+  var dToday = new Date(today + 'T00:00:00');
+  var dEnd = new Date(end + 'T00:00:00');
+  var dStart = start ? new Date(start + 'T00:00:00') : null;
+  var diffDays = Math.round((dEnd - dToday) / (1000 * 60 * 60 * 24));
+
+  if (dStart && dToday < dStart) {
+    var startDiff = Math.round((dStart - dToday) / (1000 * 60 * 60 * 24));
+    return { status: 'upcoming', label: 'Mở sau ' + startDiff + ' ngày', shortLabel: 'Chưa mở', badgeClass: 'badge-upcoming', icon: '⚪' };
+  }
+  if (diffDays < 0) {
+    var overdue = Math.abs(diffDays);
+    return { status: 'expired', label: 'Quá hạn ' + overdue + ' ngày', shortLabel: 'Quá hạn ' + overdue + ' ngày', badgeClass: 'badge-expired', icon: '🔴' };
+  }
+  if (diffDays === 0) {
+    return { status: 'today', label: 'Hết hạn hôm nay', shortLabel: 'Hết hạn hôm nay', badgeClass: 'badge-warning', icon: '⚡' };
+  }
+  if (diffDays <= 2) {
+    return { status: 'soon', label: 'Còn ' + diffDays + ' ngày', shortLabel: 'Còn ' + diffDays + ' ngày', badgeClass: 'badge-warning', icon: '🟡' };
+  }
+  return { status: 'active', label: 'Còn ' + diffDays + ' ngày', shortLabel: 'Còn ' + diffDays + ' ngày', badgeClass: 'badge-active', icon: '🟢' };
+}
+
+/* ================== QUẢN LÝ ĐIỀU HƯỚNG VỀ TRANG CHỦ ================== */
+function goToHome() {
+  var isGas = (window.location.hostname.indexOf('googleusercontent.com') !== -1 ||
+               window.location.hostname.indexOf('script.google.com') !== -1 ||
+               (typeof google !== 'undefined' && typeof google.script !== 'undefined'));
+  if (isGas) {
+    var targetUrl = SCRIPT_URL + '?page=index';
+    try {
+      window.top.location.href = targetUrl;
+    } catch (e) {
+      window.open(targetUrl, '_top');
+    }
+  } else {
+    // Môi trường Web độc lập (Vercel, Netlify, Custom Domain, Localhost, File...)
+    window.location.href = 'index.html';
+  }
+}
+
+$('goHomeBtn').addEventListener('click', goToHome);
+$('loginBackHomeBtn').addEventListener('click', goToHome);
+$('deniedBackHomeBtn').addEventListener('click', goToHome);
+var tbHome = $('topbarHomeBtn');
+if (tbHome) tbHome.addEventListener('click', goToHome);
+
+/* ================== QUẢN LÝ ĐĂNG NHẬP GOOGLE & PIN DỰ PHÒNG ================== */
+function showLoginView() {
+  $('loginView').hidden = false;
+  $('deniedView').hidden = true;
+  $('loadingView').hidden = true;
+  $('dashboardView').hidden = true;
+  $('userProfile').style.display = 'none';
+  $('logoutBtn').style.display = 'none';
+}
+
+function showDeniedView(email) {
+  $('deniedEmailText').textContent = email || 'Chưa xác định';
+  $('loginView').hidden = true;
+  $('deniedView').hidden = false;
+  $('loadingView').hidden = true;
+  $('dashboardView').hidden = true;
+  $('userProfile').style.display = 'none';
+  $('logoutBtn').style.display = 'inline-flex';
+}
+
+// Chuyển đổi khung nhập mã PIN dự phòng
+$('togglePinLoginBtn').addEventListener('click', function () {
+  var box = $('pinBox');
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (box.style.display === 'block') {
+    setTimeout(function () { $('pinInput').focus(); }, 100);
+  }
+});
+
+var deniedUsePinBtn = $('deniedUsePinBtn');
+if (deniedUsePinBtn) {
+  deniedUsePinBtn.addEventListener('click', function () {
+    $('deniedView').hidden = true;
+    $('loginView').hidden = false;
+    $('pinBox').style.display = 'block';
+    setTimeout(function () { $('pinInput').focus(); }, 100);
+  });
+}
+
+$('pinLoginBtn').addEventListener('click', handlePinLogin);
+$('pinInput').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') handlePinLogin();
+});
+
+async function handlePinLogin() {
+  var pin = $('pinInput').value.trim();
+  if (!pin) {
+    $('pinErr').textContent = 'Vui lòng nhập mã PIN quản trị.';
+    $('pinErr').style.display = 'block';
+    return;
+  }
+  var btn = $('pinLoginBtn');
+  btn.disabled = true;
+  btn.textContent = 'Đang kiểm tra…';
+  $('pinErr').style.display = 'none';
+
+  try {
+    await call('adminVerifyPin', pin);
+    state.adminAuth = pin;
+    try {
+      sessionStorage.setItem('minhchung_admin_auth', pin);
+      sessionStorage.setItem('minhchung_auth_type', 'pin');
+    } catch (e) {}
+
+    $('loginView').hidden = true;
+    $('deniedView').hidden = true;
+    $('userProfile').style.display = 'inline-flex';
+    $('userName').textContent = 'Quản trị viên (PIN)';
+    $('userAvatar').style.display = 'none';
+    $('logoutBtn').style.display = 'inline-flex';
+
+    showToast('🔑 Đăng nhập mã PIN thành công');
+    loadDashboard();
+  } catch (err) {
+    $('pinErr').textContent = err.message || 'Mã PIN không chính xác.';
+    $('pinErr').style.display = 'block';
+    $('pinInput').select();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Xác nhận';
+  }
+}
+
+async function loginWithGoogle() {
+  if (window.location.protocol === 'file:') {
+    $('pinBox').style.display = 'block';
+    setTimeout(function () { $('pinInput').focus(); }, 100);
+    showAlert('Google OAuth không hỗ trợ mở tệp trực tiếp (file://).\n\nBạn vui lòng nhập mã PIN Quản trị (0788095095) bên dưới để đăng nhập ngay, hoặc chạy qua máy chủ Web (http/https).', 'Đăng nhập cục bộ', false);
+    return;
+  }
+
+  var btn = $('googleLoginBtn');
+  var origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin" style="width:18px;height:18px;border-width:2px;margin:0 8px 0 0;display:inline-block;vertical-align:middle;"></span> Đang kết nối Google…';
+
+  var provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (err) {
+    console.error('Lỗi đăng nhập Google:', err);
+    if (err.code !== 'auth/popup-closed-by-user') {
+      $('pinBox').style.display = 'block';
+      setTimeout(function () { $('pinInput').focus(); }, 100);
+      showAlert('Không thể đăng nhập Google (' + (err.message || err.code) + ').\n\nBạn có thể nhập mã PIN Quản trị (0788095095) bên dưới để đăng nhập ngay.', 'Lỗi đăng nhập Google');
+    }
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  }
+}
+
+$('googleLoginBtn').addEventListener('click', loginWithGoogle);
+
+$('switchAccountBtn').addEventListener('click', async function () {
+  try {
+    await auth.signOut();
+  } catch (e) {}
+  loginWithGoogle();
+});
+
+$('logoutBtn').addEventListener('click', async function () {
+  state.adminAuth = '';
+  state.currentUser = null;
+  try {
+    sessionStorage.removeItem('minhchung_admin_auth');
+    sessionStorage.removeItem('minhchung_auth_type');
+    await auth.signOut();
+  } catch (e) {}
+  showLoginView();
+  showToast('🚪 Đã đăng xuất khỏi phiên Quản trị');
+});
+
+// Lắng nghe trạng thái xác thực Firebase
+auth.onAuthStateChanged(async function (user) {
+  if (!user) {
+    state.currentUser = null;
+    // Kiểm tra xem có phiên đăng nhập mã PIN trước đó không
+    var savedAuth = '';
+    var authType = '';
+    try {
+      savedAuth = sessionStorage.getItem('minhchung_admin_auth') || '';
+      authType = sessionStorage.getItem('minhchung_auth_type') || '';
+    } catch (e) {}
+
+    if (savedAuth && authType === 'pin') {
+      state.adminAuth = savedAuth;
+      $('loginView').hidden = true;
+      $('deniedView').hidden = true;
+      $('userProfile').style.display = 'inline-flex';
+      $('userName').textContent = 'Quản trị viên (PIN)';
+      $('userAvatar').style.display = 'none';
+      $('logoutBtn').style.display = 'inline-flex';
+      loadDashboard();
+      return;
+    }
+
+    state.adminAuth = '';
+    showLoginView();
+    return;
+  }
+
+  // Đang kiểm tra quyền Admin
+  $('loadingView').hidden = false;
+  $('loginView').hidden = true;
+  $('deniedView').hidden = true;
+  $('dashboardView').hidden = true;
+
+  var email = (user.email || '').trim().toLowerCase();
+  var isMasterAdmin = (email === ADMIN_EMAIL.trim().toLowerCase());
+  var isAdmin = isMasterAdmin;
+
+  try {
+    var snap = await db.collection(USERS_COLLECTION).doc(user.uid).get();
+    if (snap.exists) {
+      var userData = snap.data();
+      if (userData && userData.role === 'admin') {
+        isAdmin = true;
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi kiểm tra Firestore:', err);
+    if (isMasterAdmin) isAdmin = true;
+  }
+
+  if (!isAdmin) {
+    $('loadingView').hidden = true;
+    showDeniedView(user.email);
+    return;
+  }
+
+  // ĐÚNG TÀI KHOẢN ADMIN: Lưu/cập nhật thông tin vào Firestore
+  try {
+    await db.collection(USERS_COLLECTION).doc(user.uid).set({
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName || user.email.split('@')[0],
+      photoURL: user.photoURL || '',
+      role: 'admin',
+      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  } catch (e) {
+    console.warn('Không thể cập nhật Firestore:', e);
+  }
+
+  // Cập nhật giao diện Header
+  state.currentUser = user;
+  state.adminAuth = 'GOOGLE_AUTH_ADMIN';
+  try {
+    sessionStorage.setItem('minhchung_admin_auth', 'GOOGLE_AUTH_ADMIN');
+    sessionStorage.setItem('minhchung_auth_type', 'google');
+  } catch (e) {}
+
+  var avatarEl = $('userAvatar');
+  if (user.photoURL) {
+    avatarEl.src = user.photoURL;
+    avatarEl.style.display = 'block';
+  } else {
+    avatarEl.style.display = 'none';
+  }
+  $('userName').textContent = (user.displayName || user.email.split('@')[0]);
+  $('userProfile').style.display = 'inline-flex';
+  $('logoutBtn').style.display = 'inline-flex';
+
+  showToast('🔑 Đăng nhập Quản trị viên thành công: ' + (user.displayName || user.email));
+  loadDashboard();
+});
+
+/* ---------- Tải & Hiển thị Bảng điều khiển ---------- */
+async function loadDashboard(jobName) {
+  $('loadingView').hidden = false;
+  $('dashboardView').hidden = true;
+
+  try {
+    var data = await call('getAdminDashboard', state.adminAuth || 'GOOGLE_AUTH_ADMIN', jobName || state.currentJob || '');
+    state.adminData = data;
+    state.currentJob = data.currentJob;
+    $('loadingView').hidden = true;
+    $('dashboardView').hidden = false;
+    renderDashboard(data);
+  } catch (err) {
+    $('loadingView').hidden = true;
+    showAlert('Không tải được dữ liệu: ' + (err.message || err), 'Lỗi Quản trị');
+  }
+}
+
+$('refreshBtn').addEventListener('click', function () {
+  loadDashboard(state.currentJob);
+  showToast('🔄 Đã làm mới số liệu');
+});
+
+function renderDashboard(d) {
+  // 1. Dropdown chọn công việc
+  var sel = $('jobSelect');
+  sel.innerHTML = '';
+  (d.jobs || []).forEach(function (j) {
+    var opt = document.createElement('option');
+    opt.value = j.name;
+    opt.textContent = j.name + (j.endDate ? (' (Hạn: ' + formatVN(j.endDate) + ')') : '');
+    if (j.name === d.currentJob) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  var currentJobObj = (d.jobs || []).find(function (j) { return j.name === d.currentJob; });
+  var dl = getJobDeadlineInfo(currentJobObj, state.today);
+  var badge = $('jobStatusBadge');
+  badge.className = 'badge ' + dl.badgeClass;
+  badge.textContent = dl.icon + ' ' + (dl.shortLabel || dl.label || 'Đang mở');
+
+  // 2. 4 Thẻ KPI
+  $('kpiTotal').textContent = d.totalGV;
+  $('kpiSubmitted').textContent = d.submittedCount;
+  $('kpiUnsubmitted').textContent = d.unsubmittedCount;
+  $('kpiPercent').textContent = d.percent + '%';
+
+  // 3. Tiến độ toàn trường
+  $('progressText').textContent = d.submittedCount + '/' + d.totalGV + ' GV';
+  $('percentText').textContent = d.percent + '%';
+  $('progressBarFill').style.width = d.percent + '%';
+
+  // 4. Tiến độ theo từng Tổ / Bộ môn
+  var gBox = $('groupStatsGrid');
+  gBox.innerHTML = '';
+  (d.groupStats || []).forEach(function (g) {
+    var chip = document.createElement('div');
+    chip.className = 'group-stat-chip';
+    var isFull = g.percent === 100;
+    chip.innerHTML =
+      '<div class="group-stat-head">' +
+        '<span>' + g.name + '</span>' +
+        '<b style="color:' + (isFull ? '#137333' : '#1F4D45') + '">' + g.submitted + '/' + g.total + ' (' + g.percent + '%)</b>' +
+      '</div>' +
+      '<div class="group-stat-bar">' +
+        '<div class="group-stat-fill" style="width:' + g.percent + '%; background:' + (isFull ? '#137333' : '#1F4D45') + '"></div>' +
+      '</div>';
+    gBox.appendChild(chip);
+  });
+
+  // 5. Cập nhật số đếm trên tabs
+  $('tabUnsubCount').textContent = d.unsubmittedList.length;
+  $('tabSubCount').textContent = d.submittedList.length;
+
+  // 6. Danh sách Chưa nộp
+  var unsubBox = $('unsubmittedList');
+  unsubBox.innerHTML = '';
+  if (d.unsubmittedList.length === 0) {
+    unsubBox.innerHTML = '<div style="text-align:center;padding:26px;background:#F0F9F4;border-radius:10px;color:#137333;font-weight:600;">🎉 Tuyệt vời! 100% giáo viên đã hoàn thành nộp minh chứng cho công việc này!</div>';
+  } else {
+    d.unsubmittedList.forEach(function (t, idx) {
+      var row = document.createElement('div');
+      row.className = 'gv-row';
+      row.innerHTML =
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<span style="font-size:12px;color:var(--muted);width:22px;text-align:right;">' + (idx + 1) + '.</span>' +
+          '<div>' +
+            '<b style="font-size:15px;color:var(--ink);">' + t.name + '</b>' +
+            (t.group ? (' <span style="font-size:12px;color:var(--muted);">(' + t.group + ')</span>') : '') +
+          '</div>' +
+        '</div>' +
+        '<span class="badge badge-warning">Chưa nộp</span>';
+      unsubBox.appendChild(row);
+    });
+  }
+
+  // 7. Danh sách Đã nộp
+  var subBox = $('submittedList');
+  subBox.innerHTML = '';
+  if (d.submittedList.length === 0) {
+    subBox.innerHTML = '<div style="text-align:center;padding:26px;color:var(--muted);">Chưa có giáo viên nào nộp minh chứng cho công việc này.</div>';
+  } else {
+    d.submittedList.forEach(function (sub, idx) {
+      var item = document.createElement('div');
+      item.className = 'gv-sub-item';
+
+      var head = document.createElement('div');
+      head.style.display = 'flex';
+      head.style.justifyContent = 'space-between';
+      head.style.alignItems = 'flex-start';
+      head.style.gap = '8px';
+
+      head.innerHTML =
+        '<div>' +
+          '<b style="font-size:15px;color:var(--brand);">' + (idx + 1) + '. ' + sub.name + '</b>' +
+          (sub.group ? (' <span style="font-size:12px;color:var(--muted);">• ' + sub.group + '</span>') : '') +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">🕒 ' + formatVNTime(sub.time) + '</div>' +
+        '</div>' +
+        '<span class="badge badge-done">' + (sub.count || (sub.files && sub.files.length) || 1) + ' ảnh</span>';
+
+      item.appendChild(head);
+
+      if (sub.note) {
+        var nDiv = document.createElement('div');
+        nDiv.className = 'recent-note';
+        nDiv.textContent = '“' + sub.note + '”';
+        item.appendChild(nDiv);
+      }
+
+      var actRow = document.createElement('div');
+      actRow.style.display = 'flex';
+      actRow.style.justifyContent = 'space-between';
+      actRow.style.alignItems = 'center';
+      actRow.style.gap = '8px';
+      actRow.style.marginTop = '4px';
+
+      var viewBtn = document.createElement('button');
+      viewBtn.type = 'button';
+      viewBtn.className = 'btn-sm-view';
+      viewBtn.innerHTML = '👁️ Xem ảnh (' + (sub.count || (sub.files && sub.files.length) || 0) + ')';
+      viewBtn.addEventListener('click', function () {
+        openEvidenceModal(sub);
+      });
+
+      var unlockBtn = document.createElement('button');
+      unlockBtn.type = 'button';
+      unlockBtn.className = 'btn-del-sub';
+      unlockBtn.innerHTML = '🗑️ Mở khóa nộp lại';
+      unlockBtn.title = 'Xóa bài nộp này trên bảng tính để giáo viên có thể nộp lại';
+      unlockBtn.addEventListener('click', function () {
+        confirmDeleteSubmission(sub);
+      });
+
+      actRow.appendChild(viewBtn);
+      actRow.appendChild(unlockBtn);
+      item.appendChild(actRow);
+
+      subBox.appendChild(item);
+    });
+  }
+}
+
+$('jobSelect').addEventListener('change', function () {
+  loadDashboard(this.value);
+});
+
+$('tabUnsubBtn').addEventListener('click', function () {
+  $('tabUnsubBtn').classList.add('active');
+  $('tabSubBtn').classList.remove('active');
+  $('tabUnsubContent').style.display = 'block';
+  $('tabSubContent').style.display = 'none';
+});
+
+$('tabSubBtn').addEventListener('click', function () {
+  $('tabSubBtn').classList.add('active');
+  $('tabUnsubBtn').classList.remove('active');
+  $('tabSubContent').style.display = 'block';
+  $('tabUnsubContent').style.display = 'none';
+});
+
+/* ---------- Sao chép Zalo ---------- */
+$('copyZaloBtn').addEventListener('click', function () {
+  if (!state.adminData) return;
+  var d = state.adminData;
+  var currentJob = (d.jobs || []).find(function (j) { return j.name === d.currentJob; }) || { name: d.currentJob };
+  var schoolName = $('school').textContent || 'Trường THCS Vĩnh Tân';
+
+  var isGas = (window.location.hostname.indexOf('googleusercontent.com') !== -1 ||
+               window.location.hostname.indexOf('script.google.com') !== -1 ||
+               (typeof google !== 'undefined' && typeof google.script !== 'undefined'));
+  var teacherUrl = isGas ? (SCRIPT_URL + '?page=index') : window.location.href.split('?')[0].replace(/admin(\.html)?$/, 'index.html');
+
+  var text = '📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG\n' +
+    schoolName + '\n' +
+    '📌 Công việc: ' + d.currentJob + '\n' +
+    (currentJob.endDate ? ('⏰ Hạn chót: ' + formatVN(currentJob.endDate) + '\n') : '') +
+    '📊 Tiến độ toàn trường: ' + d.submittedCount + '/' + d.totalGV + ' (' + d.percent + '%)\n\n';
+
+  if (!d.unsubmittedList || d.unsubmittedList.length === 0) {
+    text += '🎉 100% Thầy/Cô đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn quý Thầy/Cô!';
+  } else {
+    text += '⚠️ DANH SÁCH ' + d.unsubmittedList.length + ' THẦY/CÔ CHƯA NỘP MINH CHỨNG:\n';
+    d.unsubmittedList.forEach(function (t, idx) {
+      text += (idx + 1) + '. ' + t.name + (t.group ? (' (' + t.group + ')') : '') + '\n';
+    });
+    text += '\n👉 Kính nhờ quý Thầy/Cô sắp xếp chụp ảnh và gửi minh chứng sớm theo quy định.\n' +
+      'Đường link nộp: ' + teacherUrl + '\n' +
+      'Trân trọng!';
+  }
+
+  navigator.clipboard.writeText(text).then(function () {
+    showToast('📋 Đã sao chép danh sách Zalo vào bộ nhớ đệm!');
+  }).catch(function () {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 Đã sao chép danh sách Zalo!');
+  });
+});
+
+/* ---------- Modal Thêm Công Việc ---------- */
+$('addJobBtn').addEventListener('click', function () {
+  $('newJobName').value = '';
+  $('newJobStartDate').value = formatVN(state.today);
+  $('newJobEndDate').value = '';
+  $('addJobErr').style.display = 'none';
+  $('addJobModal').hidden = false;
+  document.body.style.overflow = 'hidden';
+  setTimeout(function () { $('newJobName').focus(); }, 100);
+});
+
+function closeAddJobModal() {
+  $('addJobModal').hidden = true;
+  document.body.style.overflow = '';
+}
+
+$('addJobCloseBtn').addEventListener('click', closeAddJobModal);
+$('addJobCancelBtn').addEventListener('click', closeAddJobModal);
+$('addJobModal').addEventListener('click', function (e) {
+  if (e.target === this) closeAddJobModal();
+});
+
+$('addJobSubmitBtn').addEventListener('click', async function () {
+  var name = $('newJobName').value.trim();
+  var start = $('newJobStartDate').value.trim();
+  var end = $('newJobEndDate').value.trim();
+
+  if (!name) {
+    $('addJobErr').textContent = 'Vui lòng nhập tên công việc.';
+    $('addJobErr').style.display = 'block';
+    return;
+  }
+
+  $('addJobSubmitBtn').disabled = true;
+  $('addJobSubmitBtn').textContent = 'Đang lưu…';
+  $('addJobErr').style.display = 'none';
+
+  try {
+    await call('adminAddJob', state.adminAuth || 'GOOGLE_AUTH_ADMIN', {
+      name: name,
+      startDate: start,
+      endDate: end
+    });
+    closeAddJobModal();
+    showToast('✅ Đã thêm công việc "' + name + '" thành công!');
+    loadDashboard(name);
+  } catch (err) {
+    $('addJobErr').textContent = err.message || 'Lỗi khi thêm công việc';
+    $('addJobErr').style.display = 'block';
+  } finally {
+    $('addJobSubmitBtn').disabled = false;
+    $('addJobSubmitBtn').textContent = 'Lưu công việc';
+  }
+});
+
+/* ---------- Mở khóa nộp lại ---------- */
+function confirmDeleteSubmission(sub) {
+  var confirmMsg = 'Thầy/Cô có chắc chắn muốn MỞ KHÓA NỘP LẠI cho giáo viên:\n\n' +
+    '👤 Giáo viên: ' + sub.name + '\n' +
+    '📌 Công việc: ' + sub.job + '\n\n' +
+    'Sau khi mở khóa, bài nộp cũ trên Google Sheet sẽ được xóa để giáo viên nộp lại minh chứng mới.';
+
+  if (!confirm(confirmMsg)) return;
+
+  call('adminDeleteSubmission', state.adminAuth || 'GOOGLE_AUTH_ADMIN', sub.rowIndex, sub.job, sub.name).then(function () {
+    showToast('🗑️ Đã mở khóa cho GV ' + sub.name + ' nộp lại');
+    loadDashboard(state.currentJob);
+  }).catch(function (err) {
+    showAlert('Không thể mở khóa: ' + (err.message || err), 'Lỗi');
+  });
+}
+
+/* ---------- Xem ảnh minh chứng Modal & Lightbox ---------- */
+function openEvidenceModal(item) {
+  if (!item) return;
+
+  $('evidenceTitle').textContent = 'Minh chứng: ' + (item.job || '');
+  $('evJobName').textContent = item.job || '';
+  $('evTeacherName').textContent = item.name || 'Giáo viên';
+  $('evTime').textContent = formatVNTime(item.time) || 'Đã nộp';
+
+  if (item.startDate || item.endDate) {
+    $('evDate').textContent = formatVN(item.startDate) + (item.endDate && item.endDate !== item.startDate ? (' → ' + formatVN(item.endDate)) : '');
+    $('evDateBox').style.display = 'block';
+  } else {
+    $('evDateBox').style.display = 'none';
+  }
+
+  if (item.note) {
+    $('evNoteText').textContent = item.note;
+    $('evNoteRow').style.display = 'block';
+  } else {
+    $('evNoteRow').style.display = 'none';
+  }
+
+  var files = item.files || [];
+  if (!files.length && item.links && item.links.length) {
+    files = item.links.map(function (u) {
+      var fid = extractDriveIdClient(u);
+      return {
+        id: fid,
+        url: u,
+        thumb: fid ? ('https://drive.google.com/thumbnail?id=' + fid + '&sz=w400') : '',
+        fullThumb: fid ? ('https://drive.google.com/thumbnail?id=' + fid + '&sz=w1200') : ''
+      };
+    });
+  }
+
+  $('evPhotoCount').textContent = files.length || item.count || 0;
+  var grid = $('evThumbsGrid');
+  grid.innerHTML = '';
+
+  if (files.length > 0) {
+    files.forEach(function (f, idx) {
+      var card = document.createElement('div');
+      card.className = 'viewer-thumb-card';
+      card.title = 'Bấm để phóng to ảnh ' + (idx + 1);
+
+      var img = document.createElement('img');
+      img.src = f.thumb || f.url;
+      img.alt = 'Ảnh minh chứng ' + (idx + 1);
+      img.loading = 'lazy';
+      img.onerror = function () {
+        this.onerror = null;
+        this.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="%235E6B67"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>';
+      };
+
+      var badge = document.createElement('span');
+      badge.className = 'viewer-open-badge';
+      badge.textContent = '🔍 Phóng to';
+
+      card.appendChild(img);
+      card.appendChild(badge);
+
+      card.addEventListener('click', function () {
+        openLightbox(f.fullThumb || f.thumb || f.url, 'Ảnh ' + (idx + 1) + '/' + files.length + ' - ' + item.name + ' (' + item.job + ')', f.url);
+      });
+
+      grid.appendChild(card);
+    });
+
+    $('evOpenDriveLink').style.display = 'flex';
+    $('evOpenDriveLink').href = files[0].url || '#';
+  } else {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--muted);font-size:14px;">Không tìm thấy ảnh trên máy chủ.</div>';
+    $('evOpenDriveLink').style.display = 'none';
+  }
+
+  $('evidenceModal').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEvidenceModal() {
+  $('evidenceModal').hidden = true;
+  document.body.style.overflow = '';
+}
+
+$('evidenceCloseBtn').addEventListener('click', closeEvidenceModal);
+$('evCloseBottomBtn').addEventListener('click', closeEvidenceModal);
+$('evidenceModal').addEventListener('click', function (e) {
+  if (e.target === this) closeEvidenceModal();
+});
+
+function openLightbox(src, caption, driveUrl) {
+  $('lightboxImg').src = src;
+  $('lightboxCaption').textContent = caption || '';
+  if (driveUrl) {
+    $('lightboxDriveBtn').href = driveUrl;
+    $('lightboxDriveBtn').style.display = 'inline-block';
+  } else {
+    $('lightboxDriveBtn').style.display = 'none';
+  }
+  $('lightboxModal').hidden = false;
+}
+
+function closeLightbox() {
+  $('lightboxModal').hidden = true;
+  $('lightboxImg').src = '';
+}
+
+$('lightboxCloseBtn').addEventListener('click', closeLightbox);
+$('lightboxModal').addEventListener('click', function (e) {
+  if (e.target === this) closeLightbox();
+});
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') {
+    if (!$('lightboxModal').hidden) { closeLightbox(); return; }
+    if (!$('evidenceModal').hidden) { closeEvidenceModal(); return; }
+    if (!$('addJobModal').hidden) { closeAddJobModal(); return; }
+    if (!$('alertModal').hidden) {
+      $('alertModal').hidden = true;
+      document.body.style.overflow = '';
+    }
+  }
+});
+</script>
+</body>
+</html>
