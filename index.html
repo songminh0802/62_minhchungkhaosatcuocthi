@@ -939,11 +939,16 @@ function onInit(d) {
     sel.disabled = true;
   }
 
-  $('startDate').value = '';
-  $('endDate').value = '';
-  $('deadlineBox').style.display = 'none';
-  $('jobSubmittedCard').style.display = 'none';
-  $('uploadFormFields').style.display = 'block';
+  if (unsubmittedJobs.length === 1) {
+    sel.value = unsubmittedJobs[0].name;
+    onJobSelected(unsubmittedJobs[0].name);
+  } else {
+    $('startDate').value = '';
+    $('endDate').value = '';
+    $('deadlineBox').style.display = 'none';
+    $('jobSubmittedCard').style.display = 'none';
+    $('uploadFormFields').style.display = 'block';
+  }
 
   renderThumbs();
   renderRecent(d.recent || []);
@@ -1321,8 +1326,7 @@ function setBusy(b) {
   $('sendBtn').textContent = b ? 'Đang nộp…' : 'Nộp minh chứng';
 }
 
-$('job').addEventListener('change', function () {
-  var jobVal = this.value;
+function onJobSelected(jobVal) {
   showErr('');
 
   if (!jobVal) {
@@ -1360,12 +1364,16 @@ $('job').addEventListener('change', function () {
   $('jobSubmittedCard').style.display = 'none';
   $('uploadFormFields').style.display = 'block';
 
-  var selOpt = this.options[this.selectedIndex];
-  var idx = selOpt ? selOpt.getAttribute('data-idx') : null;
-  if (idx !== null && state.jobs[idx]) {
-    var j = state.jobs[idx];
-    $('startDate').value = formatVN(j.startDate);
-    $('endDate').value = formatVN(j.endDate);
+  // Tra cứu công việc theo tên trực tiếp trong state.jobs (không phụ thuộc index)
+  var j = (state.jobs || []).find(function (item) {
+    return String(item.name || '').trim().toLowerCase() === String(jobVal).trim().toLowerCase();
+  });
+
+  if (j) {
+    var sDate = j.startDate ? formatVN(j.startDate) : (formatVN(state.today) || '');
+    var eDate = j.endDate ? formatVN(j.endDate) : sDate;
+    $('startDate').value = sDate;
+    $('endDate').value = eDate;
 
     var dl = getJobDeadlineInfo(j, state.today);
     var dBox = $('deadlineBox');
@@ -1378,10 +1386,15 @@ $('job').addEventListener('change', function () {
       '<div>' + dl.hint + '</div>';
     dBox.style.display = 'block';
   } else {
-    $('startDate').value = '';
-    $('endDate').value = '';
+    var defDate = formatVN(state.today) || '';
+    $('startDate').value = defDate;
+    $('endDate').value = defDate;
     $('deadlineBox').style.display = 'none';
   }
+}
+
+$('job').addEventListener('change', function () {
+  onJobSelected(this.value);
 });
 
 $('sendBtn').addEventListener('click', async function () {
@@ -1394,6 +1407,25 @@ $('sendBtn').addEventListener('click', async function () {
   var note = $('note').value.trim();
 
   if (!job) return showErr('Vui lòng chọn công việc cần nộp minh chứng.', 'Chưa chọn công việc');
+
+  // Đảm bảo startDate và endDate luôn có giá trị hợp lệ trước khi gửi
+  if (!startDate || !endDate) {
+    var jObj = (state.jobs || []).find(function (item) {
+      return String(item.name || '').trim().toLowerCase() === String(job).trim().toLowerCase();
+    });
+    if (jObj) {
+      if (!startDate) startDate = jObj.startDate ? formatVN(jObj.startDate) : (formatVN(state.today) || '');
+      if (!endDate) endDate = jObj.endDate ? formatVN(jObj.endDate) : startDate;
+      $('startDate').value = startDate;
+      $('endDate').value = endDate;
+    } else {
+      if (!startDate) startDate = formatVN(state.today) || '';
+      if (!endDate) endDate = startDate;
+      $('startDate').value = startDate;
+      $('endDate').value = endDate;
+    }
+  }
+
   if (isJobSubmitted(job)) {
     return showErr('Công việc "' + job + '" Thầy/Cô đã nộp minh chứng rồi.\n\n📌 Quy định: Mỗi công việc 1 giáo viên chỉ nộp 1 lần duy nhất!', 'Đã nộp công việc này');
   }
