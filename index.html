@@ -575,14 +575,62 @@ function showToast(msg) {
   }, 2600);
 }
 
-function formatVN(dStr) {
-  if (!dStr) return '';
-  var parts = String(dStr).split('-');
-  return parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : dStr;
-}
-
 function padZero(n) {
   return n < 10 ? '0' + n : '' + n;
+}
+
+function formatVN(dStr) {
+  if (!dStr) return '';
+  if (dStr instanceof Date) {
+    var hasT = (dStr.getHours() !== 0 || dStr.getMinutes() !== 0);
+    var dStrPart = padZero(dStr.getDate()) + '/' + padZero(dStr.getMonth() + 1) + '/' + dStr.getFullYear();
+    return hasT ? (padZero(dStr.getHours()) + ':' + padZero(dStr.getMinutes()) + ' ' + dStrPart) : dStrPart;
+  }
+  var s = String(dStr).trim();
+  if (!s) return '';
+
+  // Sửa chuỗi bị lỗi ghép cũ "22 11:00:00/10/2026"
+  var mMangled = s.match(/^(\d{1,2})\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?)\/(\d{1,2})\/(\d{4})/);
+  if (mMangled) {
+    var timePart = mMangled[2].slice(0, 5); // "11:00"
+    return timePart + ' ' + padZero(parseInt(mMangled[1], 10)) + '/' + padZero(parseInt(mMangled[3], 10)) + '/' + mMangled[4];
+  }
+
+  // Tiếng Việt "Chủ Nhật, 1 tháng 11, 2026"
+  var mVNText = s.match(/(?:(?:thứ\s+\d+|chủ\s+nhật)[,\s]+)?(\d{1,2})\s+tháng\s+(\d{1,2})(?:[,\s]+(?:năm\s+)?(\d{4}))?(?:[,\s]+(?:lúc\s+)?(\d{1,2})(?:[:hH](\d{0,2}))?)?/i);
+  if (mVNText) {
+    var d2 = padZero(parseInt(mVNText[1], 10));
+    var m2 = padZero(parseInt(mVNText[2], 10));
+    var y2 = mVNText[3] || String(new Date().getFullYear());
+    var dateP = d2 + '/' + m2 + '/' + y2;
+    if (mVNText[4] !== undefined) {
+      var tP = padZero(parseInt(mVNText[4], 10)) + ':' + padZero(parseInt(mVNText[5] || '0', 10));
+      return tP + ' ' + dateP;
+    }
+    return dateP;
+  }
+
+  // Dạng ISO: yyyy-MM-dd hoặc yyyy-MM-dd HH:mm(:ss)?
+  var mISO = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (mISO) {
+    var datePart = padZero(parseInt(mISO[3], 10)) + '/' + padZero(parseInt(mISO[2], 10)) + '/' + mISO[1];
+    if (mISO[4] !== undefined && (parseInt(mISO[4], 10) !== 0 || parseInt(mISO[5], 10) !== 0)) {
+      return padZero(parseInt(mISO[4], 10)) + ':' + padZero(parseInt(mISO[5], 10)) + ' ' + datePart;
+    }
+    return datePart;
+  }
+
+  // Dạng VN: dd/MM/yyyy hoặc dd/MM/yyyy HH:mm
+  var mVN = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?/);
+  if (mVN) {
+    var datePart2 = padZero(parseInt(mVN[1], 10)) + '/' + padZero(parseInt(mVN[2], 10)) + '/' + mVN[3];
+    if (mVN[4] !== undefined) {
+      return padZero(parseInt(mVN[4], 10)) + ':' + padZero(parseInt(mVN[5], 10)) + ' ' + datePart2;
+    }
+    return datePart2;
+  }
+
+  return s;
 }
 
 /* Chuẩn hóa hiển thị thời gian sang giờ Việt Nam (dd/MM/yyyy HH:mm:ss) */
@@ -617,10 +665,79 @@ function extractDriveIdClient(url) {
   return m ? m[1] : '';
 }
 
-/* Tính toán trạng thái hạn chót công việc */
+/* Chuyển chuỗi ngày giờ từ Sheet sang đối tượng Date chuẩn */
+function parseJobDateTime(str, isEndOfDay) {
+  if (!str) return null;
+  if (str instanceof Date) return str;
+  var s = String(str).trim();
+  if (!s) return null;
+
+  // Sửa chuỗi bị lỗi ghép cũ "22 11:00:00/10/2026"
+  var mMangled = s.match(/^(\d{1,2})\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?)\/(\d{1,2})\/(\d{4})/);
+  if (mMangled) {
+    s = mMangled[4] + '-' + mMangled[3].padStart(2, '0') + '-' + mMangled[1].padStart(2, '0') + ' ' + mMangled[2];
+  }
+
+  // Dạng tiếng Việt có chữ "tháng": "Chủ Nhật, 1 tháng 11, 2026"
+  var mVNText = s.match(/(?:(?:thứ\s+\d+|chủ\s+nhật)[,\s]+)?(\d{1,2})\s+tháng\s+(\d{1,2})(?:[,\s]+(?:năm\s+)?(\d{4}))?(?:[,\s]+(?:lúc\s+)?(\d{1,2})(?:[:hH](\d{0,2}))?)?/i);
+  if (mVNText) {
+    var d = parseInt(mVNText[1], 10);
+    var mo = parseInt(mVNText[2], 10) - 1;
+    var y = parseInt(mVNText[3] || new Date().getFullYear(), 10);
+    var hasH = mVNText[4] !== undefined;
+    var hh = hasH ? parseInt(mVNText[4], 10) : (isEndOfDay ? 23 : 0);
+    var mm = hasH ? parseInt(mVNText[5] || '0', 10) : (isEndOfDay ? 59 : 0);
+    var ss = isEndOfDay && !hasH ? 59 : 0;
+    return new Date(y, mo, d, hh, mm, ss);
+  }
+
+  // Dạng 1: Giờ đứng trước "11h 22/10/2026" hoặc "11:00 22/10/2026"
+  var mTimeFirst = s.match(/^(\d{1,2})[:hH](\d{0,2})\s*(?:ngày\s+)?(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+  if (mTimeFirst) {
+    return new Date(
+      parseInt(mTimeFirst[5], 10),
+      parseInt(mTimeFirst[4], 10) - 1,
+      parseInt(mTimeFirst[3], 10),
+      parseInt(mTimeFirst[1], 10),
+      parseInt(mTimeFirst[2] || '0', 10),
+      0
+    );
+  }
+
+  // Dạng 2: Ngày đứng trước "22/10/2026 11:00" hoặc "22/10/2026 11h" hoặc "22/10/2026"
+  var mVN = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(?:lúc\s+)?(\d{1,2})(?:[:hH](\d{0,2}))?)?/i);
+  if (mVN) {
+    var hasH = mVN[4] !== undefined;
+    var hh = hasH ? parseInt(mVN[4], 10) : (isEndOfDay ? 23 : 0);
+    var mm = hasH ? parseInt(mVN[5] || '0', 10) : (isEndOfDay ? 59 : 0);
+    var ss = isEndOfDay && !hasH ? 59 : 0;
+    return new Date(parseInt(mVN[3], 10), parseInt(mVN[2], 10) - 1, parseInt(mVN[1], 10), hh, mm, ss);
+  }
+
+  // Dạng 3: ISO "2026-10-22 11:00:00" hoặc "2026-10-22"
+  var mISO = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s]+(\d{1,2})(?:[:hH](\d{0,2}))?(?::(\d{1,2}))?)?/);
+  if (mISO) {
+    var hasH3 = mISO[4] !== undefined;
+    var hh3 = hasH3 ? parseInt(mISO[4], 10) : (isEndOfDay ? 23 : 0);
+    var mm3 = hasH3 ? parseInt(mISO[5] || '0', 10) : (isEndOfDay ? 59 : 0);
+    var ss3 = mISO[6] !== undefined ? parseInt(mISO[6], 10) : (isEndOfDay && !hasH3 ? 59 : 0);
+    return new Date(parseInt(mISO[1], 10), parseInt(mISO[2], 10) - 1, parseInt(mISO[3], 10), hh3, mm3, ss3);
+  }
+
+  // Dạng 4: Chỉ có giờ "11h" hoặc "11:00" (tính theo ngày hôm nay)
+  var mHourOnly = s.match(/^(\d{1,2})[:hH](\d{0,2})$/i);
+  if (mHourOnly) {
+    var nowD = new Date();
+    return new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate(), parseInt(mHourOnly[1], 10), parseInt(mHourOnly[2] || '0', 10), 0);
+  }
+
+  var d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* Tính toán trạng thái hạn chót công việc với độ chính xác đến từng giờ/phút */
 function getJobDeadlineInfo(job, todayStr) {
   if (!job) return { status: 'none', label: '', shortLabel: '', badgeClass: 'badge-muted', icon: '', boxClass: '', hint: '' };
-  var today = todayStr || state.today || new Date().toISOString().slice(0, 10);
   var start = job.startDate || '';
   var end = job.endDate || '';
 
@@ -636,35 +753,62 @@ function getJobDeadlineInfo(job, todayStr) {
     };
   }
 
-  var dToday = new Date(today + 'T00:00:00');
-  var dEnd = new Date(end + 'T00:00:00');
-  var dStart = start ? new Date(start + 'T00:00:00') : null;
+  var now = new Date();
+  var dEnd = parseJobDateTime(end, true);
+  var dStart = start ? parseJobDateTime(start, false) : null;
 
-  var diffDays = Math.round((dEnd - dToday) / (1000 * 60 * 60 * 24));
-
-  if (dStart && dToday < dStart) {
-    var startDiff = Math.round((dStart - dToday) / (1000 * 60 * 60 * 24));
-    return {
-      status: 'upcoming',
-      diffDays: diffDays,
-      startDiff: startDiff,
-      label: 'Chưa bắt đầu (mở sau ' + startDiff + ' ngày)',
-      shortLabel: 'Chưa mở',
-      badgeClass: 'badge-upcoming',
-      icon: '⚪',
-      boxClass: 'upcoming',
-      hint: 'Công việc này sẽ chính thức bắt đầu từ ngày <b>' + formatVN(start) + '</b>.'
-    };
+  if (!dEnd) {
+    return { status: 'none', label: '', shortLabel: '', badgeClass: 'badge-muted', icon: '', boxClass: '', hint: '' };
   }
 
-  if (diffDays < 0) {
-    var overdue = Math.abs(diffDays);
+  // 1. Kiểm tra chưa bắt đầu (Upcoming)
+  if (dStart && now < dStart) {
+    var msUntilStart = dStart.getTime() - now.getTime();
+    var hoursUntilStart = msUntilStart / (1000 * 60 * 60);
+    var startH = padZero(dStart.getHours()) + ':' + padZero(dStart.getMinutes());
+
+    var isSameDay = (now.getFullYear() === dStart.getFullYear() &&
+                     now.getMonth() === dStart.getMonth() &&
+                     now.getDate() === dStart.getDate());
+
+    if (isSameDay) {
+      return {
+        status: 'upcoming',
+        diffDays: 0,
+        startDiff: 0,
+        label: 'Chưa mở (Mở lúc ' + startH + ' hôm nay)',
+        shortLabel: 'Mở lúc ' + startH,
+        badgeClass: 'badge-upcoming',
+        icon: '⚪',
+        boxClass: 'upcoming',
+        hint: '⏳ Công việc này sẽ chính thức mở lúc <b>' + startH + ' hôm nay</b> (' + formatVN(start) + '). Thầy/Cô vui lòng quay lại sau.'
+      };
+    } else {
+      var startDays = Math.ceil(hoursUntilStart / 24);
+      return {
+        status: 'upcoming',
+        diffDays: 0,
+        startDiff: startDays,
+        label: 'Chưa bắt đầu (mở sau ' + startDays + ' ngày)',
+        shortLabel: 'Chưa mở',
+        badgeClass: 'badge-upcoming',
+        icon: '⚪',
+        boxClass: 'upcoming',
+        hint: '⏳ Công việc này sẽ chính thức bắt đầu từ ngày <b>' + formatVN(start) + '</b>.'
+      };
+    }
+  }
+
+  // 2. Kiểm tra đã quá hạn (Expired)
+  if (now > dEnd) {
+    var msOver = now.getTime() - dEnd.getTime();
+    var overdueDays = Math.max(1, Math.floor(msOver / (1000 * 60 * 60 * 24)));
     return {
       status: 'expired',
-      diffDays: diffDays,
-      overdueDays: overdue,
-      label: 'Đã quá hạn ' + overdue + ' ngày',
-      shortLabel: 'Quá hạn ' + overdue + ' ngày',
+      diffDays: -overdueDays,
+      overdueDays: overdueDays,
+      label: 'Đã quá hạn ' + overdueDays + ' ngày',
+      shortLabel: 'Quá hạn ' + overdueDays + ' ngày',
       badgeClass: 'badge-expired',
       icon: '🔴',
       boxClass: 'expired',
@@ -672,16 +816,28 @@ function getJobDeadlineInfo(job, todayStr) {
     };
   }
 
-  if (diffDays === 0) {
+  // 3. Đang mở (Active / Soon / Today)
+  var msLeft = dEnd.getTime() - now.getTime();
+  var hoursLeft = msLeft / (1000 * 60 * 60);
+  var diffDays = Math.ceil(hoursLeft / 24);
+
+  var isEndToday = (now.getFullYear() === dEnd.getFullYear() &&
+                    now.getMonth() === dEnd.getMonth() &&
+                    now.getDate() === dEnd.getDate());
+
+  if (isEndToday || hoursLeft <= 24) {
+    var endH = (dEnd.getHours() !== 23 || dEnd.getMinutes() !== 59)
+      ? (' trước ' + padZero(dEnd.getHours()) + ':' + padZero(dEnd.getMinutes()))
+      : '';
     return {
       status: 'today',
       diffDays: 0,
-      label: 'Hạn chót hôm nay!',
+      label: 'Hạn chót hôm nay!' + endH,
       shortLabel: 'Hết hạn hôm nay',
       badgeClass: 'badge-warning',
       icon: '⚡',
       boxClass: 'warning',
-      hint: '⚡ <b>Hôm nay là ngày cuối cùng</b> để nộp minh chứng công việc này. Xin vui lòng hoàn thành sớm.'
+      hint: '⚡ <b>Hôm nay là ngày cuối cùng</b> để nộp minh chứng công việc này. Xin vui lòng hoàn thành sớm' + (endH ? (' trước <b>' + padZero(dEnd.getHours()) + ':' + padZero(dEnd.getMinutes()) + '</b>') : '') + '.'
     };
   }
 
@@ -694,7 +850,7 @@ function getJobDeadlineInfo(job, todayStr) {
       badgeClass: 'badge-warning',
       icon: '🟡',
       boxClass: 'warning',
-      hint: '⏳ Thời hạn còn lại: <b>' + diffDays + ' ngày</b> (hạn chót ngày ' + formatVN(end) + ').'
+      hint: '⏳ Thời hạn còn lại: <b>' + diffDays + ' ngày</b> (hạn chót ngày <b>' + formatVN(end) + '</b>).'
     };
   }
 
@@ -1423,6 +1579,16 @@ $('sendBtn').addEventListener('click', async function () {
       if (!endDate) endDate = startDate;
       $('startDate').value = startDate;
       $('endDate').value = endDate;
+    }
+  }
+
+  var jobObj = (state.jobs || []).find(function (item) {
+    return String(item.name || '').trim().toLowerCase() === String(job).trim().toLowerCase();
+  });
+  if (jobObj) {
+    var checkDl = getJobDeadlineInfo(jobObj, state.today);
+    if (checkDl.status === 'upcoming') {
+      return showErr('Công việc "' + job + '" chưa đến thời gian mở (' + checkDl.label + ').\n\nThầy/Cô vui lòng quay lại sau khi công việc chính thức mở!', 'Chưa đến giờ mở');
     }
   }
 
