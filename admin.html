@@ -626,7 +626,19 @@ async function call(fn) {
     throw new Error('Máy chủ phản hồi mã lỗi HTTP: ' + res.status);
   }
 
-  var json = await res.json();
+  var rawText = await res.text();
+  var json;
+  try {
+    json = JSON.parse(rawText);
+  } catch (parseErr) {
+    var match = rawText.match(/class="errorMessage">([^<]+)<\/div>/i) || rawText.match(/margin:50px auto 0;[^>]*>([^<]+)<\/div>/i);
+    var errDetail = match ? match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '';
+    if (errDetail) {
+      throw new Error(errDetail);
+    }
+    throw new Error('Máy chủ trả về phản hồi không hợp lệ (không phải JSON).');
+  }
+
   if (json.status === 'error' || json.error) {
     throw new Error(json.message || json.error || 'Lỗi xử lý từ máy chủ');
   }
