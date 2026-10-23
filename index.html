@@ -1164,9 +1164,9 @@ function onInit(d) {
     sel.disabled = true;
   }
 
-  if (unsubmittedJobs.length === 1) {
-    sel.value = unsubmittedJobs[0].name;
-    onJobSelected(unsubmittedJobs[0].name);
+  if (openJobs && openJobs.length === 1) {
+    sel.value = openJobs[0].name;
+    onJobSelected(openJobs[0].name);
   } else {
     $('startDate').value = '';
     $('endDate').value = '';
