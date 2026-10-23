@@ -84,9 +84,9 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
 .admin-btn-subtle{background:#EAECE7;color:var(--ink)}
 .admin-btn-subtle:hover{background:#DFE2DC}
 
-/* 4 Thẻ KPI */
-.admin-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}
-@media (max-width:680px){.admin-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+/* 6 Thẻ KPI */
+.admin-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:18px 0}
+.badge-exempt{background:#EDE7F6;color:#5E35B1;border:1px solid #D1C4E9}
 .kpi-card{background:#FAFBF9;border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px}
 .kpi-icon{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
 .kpi-info{flex:1}
@@ -305,13 +305,20 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
       <select id="jobSelect" style="font-weight:600;font-size:15px;"></select>
     </div>
 
-    <!-- 4 Thẻ KPI Tổng quan -->
+    <!-- 6 Thẻ KPI Tổng quan -->
     <div class="admin-kpi-grid">
       <div class="kpi-card">
         <div class="kpi-icon" style="background:#EBF3FE;color:#1A73E8;">👥</div>
         <div class="kpi-info">
           <div class="kpi-val" id="kpiTotal">0</div>
           <div class="kpi-lbl">Tổng giáo viên</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#E1F5FE;color:#0277BD;">🎯</div>
+        <div class="kpi-info">
+          <div class="kpi-val" id="kpiRequired">0</div>
+          <div class="kpi-lbl">Phải nộp</div>
         </div>
       </div>
       <div class="kpi-card">
@@ -326,6 +333,13 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
         <div class="kpi-info">
           <div class="kpi-val" id="kpiUnsubmitted" style="color:#C5221F;">0</div>
           <div class="kpi-lbl">Chưa nộp</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:#EDE7F6;color:#5E35B1;">🛡️</div>
+        <div class="kpi-info">
+          <div class="kpi-val" id="kpiExempt" style="color:#5E35B1;">0</div>
+          <div class="kpi-lbl">Miễn nộp</div>
         </div>
       </div>
       <div class="kpi-card">
@@ -356,13 +370,16 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
       <div id="groupStatsGrid" class="group-stats-grid"></div>
     </div>
 
-    <!-- Tabs Danh sách Chưa nộp & Đã nộp -->
+    <!-- Tabs Danh sách Chưa nộp, Đã nộp, Miễn nộp -->
     <div class="admin-tabs">
       <button type="button" class="admin-tab active" id="tabUnsubBtn">
         ⏳ Chưa nộp (<span id="tabUnsubCount">0</span>)
       </button>
       <button type="button" class="admin-tab" id="tabSubBtn">
         ✅ Đã nộp (<span id="tabSubCount">0</span>)
+      </button>
+      <button type="button" class="admin-tab" id="tabExemptBtn">
+        🛡️ Miễn nộp (<span id="tabExemptCount">0</span>)
       </button>
     </div>
 
@@ -387,6 +404,19 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
     <!-- Tab 2: Danh sách Đã nộp + Mở khóa nộp lại -->
     <div id="tabSubContent" style="display:none;">
       <div id="submittedList" class="gv-list"></div>
+    </div>
+
+    <!-- Tab 3: Danh sách Miễn nộp -->
+    <div id="tabExemptContent" style="display:none;">
+      <div style="background:#F8F5FC;border:1px solid #D1C4E9;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#4A148C;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <b>🛡️ Danh sách miễn nộp</b>: Tự động trích xuất từ Sheet <code>MienNop</code> hoặc cột <code>Ghi chú / Miễn nộp</code> của Sheet <code>DS</code>.
+        </div>
+        <div style="font-size:12px;color:#6A1B9A;">
+          💡 Giáo viên thuộc diện miễn không bị tính là thiếu minh chứng và không bị gửi vào danh sách nhắc Zalo.
+        </div>
+      </div>
+      <div id="exemptList" class="gv-list"></div>
     </div>
   </section>
 
@@ -604,6 +634,7 @@ async function call(fn) {
   } else if (fn === 'getAdminDashboard') {
     payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
     payload.jobName = args[1] || '';
+    payload.refresh = args[2] ? true : false;
   } else if (fn === 'adminAddJob') {
     payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
     payload.jobData = args[1] || {};
@@ -1120,12 +1151,12 @@ auth.onAuthStateChanged(async function (user) {
 });
 
 /* ---------- Tải & Hiển thị Bảng điều khiển ---------- */
-async function loadDashboard(jobName) {
+async function loadDashboard(jobName, forceRefresh) {
   $('loadingView').hidden = false;
   $('dashboardView').hidden = true;
 
   try {
-    var data = await call('getAdminDashboard', state.adminAuth || 'GOOGLE_AUTH_ADMIN', jobName || state.currentJob || '');
+    var data = await call('getAdminDashboard', state.adminAuth || 'GOOGLE_AUTH_ADMIN', jobName || state.currentJob || '', forceRefresh ? true : false);
     state.adminData = data;
     state.currentJob = data.currentJob;
     $('loadingView').hidden = true;
@@ -1138,8 +1169,8 @@ async function loadDashboard(jobName) {
 }
 
 $('refreshBtn').addEventListener('click', function () {
-  loadDashboard(state.currentJob);
-  showToast('🔄 Đã làm mới số liệu');
+  loadDashboard(state.currentJob, true);
+  showToast('🔄 Đang làm mới dữ liệu từ Google Sheet...');
 });
 
 function renderDashboard(d) {
@@ -1160,14 +1191,18 @@ function renderDashboard(d) {
   badge.className = 'badge ' + dl.badgeClass;
   badge.textContent = dl.icon + ' ' + (dl.shortLabel || dl.label || 'Đang mở');
 
-  // 2. 4 Thẻ KPI
+  // 2. 6 Thẻ KPI
   $('kpiTotal').textContent = d.totalGV;
+  $('kpiRequired').textContent = d.requiredCount !== undefined ? d.requiredCount : d.totalGV;
   $('kpiSubmitted').textContent = d.submittedCount;
   $('kpiUnsubmitted').textContent = d.unsubmittedCount;
+  $('kpiExempt').textContent = d.exemptCount || (d.exemptList ? d.exemptList.length : 0);
   $('kpiPercent').textContent = d.percent + '%';
 
-  // 3. Tiến độ toàn trường
-  $('progressText').textContent = d.submittedCount + '/' + d.totalGV + ' GV';
+  // 3. Tiến độ toàn trường (tính trên số lượng phải nộp)
+  var reqCount = d.requiredCount !== undefined ? d.requiredCount : d.totalGV;
+  $('progressText').innerHTML = d.submittedCount + '/' + reqCount + ' GV' +
+    (d.exemptCount > 0 ? (' <span style="font-size:12px;font-weight:normal;color:#5E35B1;">(Miễn nộp: ' + d.exemptCount + ')</span>') : '');
   $('percentText').textContent = d.percent + '%';
   $('progressBarFill').style.width = d.percent + '%';
 
@@ -1178,10 +1213,14 @@ function renderDashboard(d) {
     var chip = document.createElement('div');
     chip.className = 'group-stat-chip';
     var isFull = g.percent === 100;
+    var reqT = g.required !== undefined ? g.required : g.total;
     chip.innerHTML =
       '<div class="group-stat-head">' +
         '<span>' + g.name + '</span>' +
-        '<b style="color:' + (isFull ? '#137333' : '#1F4D45') + '">' + g.submitted + '/' + g.total + ' (' + g.percent + '%)</b>' +
+        '<b style="color:' + (isFull ? '#137333' : '#1F4D45') + '">' +
+          g.submitted + '/' + reqT + ' (' + g.percent + '%)' +
+          (g.exempt > 0 ? (' <span style="font-size:11px;font-weight:normal;color:#5E35B1;">(Miễn ' + g.exempt + ')</span>') : '') +
+        '</b>' +
       '</div>' +
       '<div class="group-stat-bar">' +
         '<div class="group-stat-fill" style="width:' + g.percent + '%; background:' + (isFull ? '#137333' : '#1F4D45') + '"></div>' +
@@ -1192,6 +1231,7 @@ function renderDashboard(d) {
   // 5. Cập nhật số đếm trên tabs
   $('tabUnsubCount').textContent = d.unsubmittedList.length;
   $('tabSubCount').textContent = d.submittedList.length;
+  $('tabExemptCount').textContent = (d.exemptList || []).length;
 
   // 6. Danh sách Chưa nộp
   var unsubBox = $('unsubmittedList');
@@ -1279,25 +1319,58 @@ function renderDashboard(d) {
       subBox.appendChild(item);
     });
   }
+
+  // 8. Danh sách Miễn nộp
+  var exBox = $('exemptList');
+  if (exBox) {
+    exBox.innerHTML = '';
+    if (!d.exemptList || d.exemptList.length === 0) {
+      exBox.innerHTML = '<div style="text-align:center;padding:26px;color:var(--muted);">Không có giáo viên nào thuộc diện miễn nộp cho công việc này.</div>';
+    } else {
+      d.exemptList.forEach(function (t, idx) {
+        var row = document.createElement('div');
+        row.className = 'gv-row';
+        row.innerHTML =
+          '<div style="display:flex;align-items:center;gap:12px;">' +
+            '<span style="font-size:12px;color:var(--muted);width:22px;text-align:right;">' + (idx + 1) + '.</span>' +
+            '<div>' +
+              '<b style="font-size:15px;color:var(--ink);">' + t.name + '</b>' +
+              (t.group ? (' <span style="font-size:12px;color:var(--muted);">(' + t.group + ')</span>') : '') +
+              (t.reason ? ('<div style="font-size:12px;color:#5E35B1;margin-top:2px;">🛡️ Lý do: <em>' + t.reason + '</em></div>') : '') +
+            '</div>' +
+          '</div>' +
+          '<span class="badge badge-exempt">Miễn nộp</span>';
+        exBox.appendChild(row);
+      });
+    }
+  }
 }
 
 $('jobSelect').addEventListener('change', function () {
   loadDashboard(this.value);
 });
 
-$('tabUnsubBtn').addEventListener('click', function () {
-  $('tabUnsubBtn').classList.add('active');
-  $('tabSubBtn').classList.remove('active');
-  $('tabUnsubContent').style.display = 'block';
-  $('tabSubContent').style.display = 'none';
-});
+function switchAdminTab(activeTab) {
+  var tabs = [
+    { key: 'tabUnsub', btn: $('tabUnsubBtn'), content: $('tabUnsubContent') },
+    { key: 'tabSub', btn: $('tabSubBtn'), content: $('tabSubContent') },
+    { key: 'tabExempt', btn: $('tabExemptBtn'), content: $('tabExemptContent') }
+  ];
+  tabs.forEach(function (t) {
+    if (!t.btn || !t.content) return;
+    if (t.key === activeTab) {
+      t.btn.classList.add('active');
+      t.content.style.display = 'block';
+    } else {
+      t.btn.classList.remove('active');
+      t.content.style.display = 'none';
+    }
+  });
+}
 
-$('tabSubBtn').addEventListener('click', function () {
-  $('tabSubBtn').classList.add('active');
-  $('tabUnsubBtn').classList.remove('active');
-  $('tabSubContent').style.display = 'block';
-  $('tabUnsubContent').style.display = 'none';
-});
+$('tabUnsubBtn').addEventListener('click', function () { switchAdminTab('tabUnsub'); });
+$('tabSubBtn').addEventListener('click', function () { switchAdminTab('tabSub'); });
+$('tabExemptBtn').addEventListener('click', function () { switchAdminTab('tabExempt'); });
 
 /* ---------- Sao chép Zalo ---------- */
 $('copyZaloBtn').addEventListener('click', function () {
@@ -1311,11 +1384,13 @@ $('copyZaloBtn').addEventListener('click', function () {
                (typeof google !== 'undefined' && typeof google.script !== 'undefined'));
   var teacherUrl = isGas ? (SCRIPT_URL + '?page=index') : window.location.href.split('?')[0].replace(/admin(\.html)?$/, 'index.html');
 
+  var reqCount = d.requiredCount !== undefined ? d.requiredCount : d.totalGV;
   var text = '📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG\n' +
     schoolName + '\n' +
     '📌 Công việc: ' + d.currentJob + '\n' +
     (currentJob.endDate ? ('⏰ Hạn chót: ' + formatVN(currentJob.endDate) + '\n') : '') +
-    '📊 Tiến độ toàn trường: ' + d.submittedCount + '/' + d.totalGV + ' (' + d.percent + '%)\n\n';
+    '📊 Tiến độ: ' + d.submittedCount + '/' + reqCount + ' GV (' + d.percent + '%)' +
+    (d.exemptCount > 0 ? (' [Miễn nộp: ' + d.exemptCount + ' GV]') : '') + '\n\n';
 
   if (!d.unsubmittedList || d.unsubmittedList.length === 0) {
     text += '🎉 100% Thầy/Cô đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn quý Thầy/Cô!';
@@ -1324,6 +1399,15 @@ $('copyZaloBtn').addEventListener('click', function () {
     d.unsubmittedList.forEach(function (t, idx) {
       text += (idx + 1) + '. ' + t.name + (t.group ? (' (' + t.group + ')') : '') + '\n';
     });
+
+    if (d.exemptList && d.exemptList.length > 0) {
+      text += '\n🛡️ Miễn nộp (' + d.exemptList.length + ' GV): ';
+      var exNames = d.exemptList.map(function (e) {
+        return e.name + (e.reason && e.reason !== 'Được miễn nộp' ? ' (' + e.reason + ')' : '');
+      }).join(', ');
+      text += exNames + '\n';
+    }
+
     text += '\n👉 Kính nhờ quý Thầy/Cô sắp xếp chụp ảnh và gửi minh chứng sớm theo quy định.\n' +
       'Đường link nộp: ' + teacherUrl + '\n' +
       'Trân trọng!';
