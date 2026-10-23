@@ -819,12 +819,12 @@ function getJobDeadlineInfo(job, todayStr) {
       status: 'expired',
       diffDays: -overdueDays,
       overdueDays: overdueDays,
-      label: 'Đã quá hạn ' + overdueDays + ' ngày',
-      shortLabel: 'Quá hạn ' + overdueDays + ' ngày',
+      label: 'Đã hết hạn (' + overdueDays + ' ngày trước)',
+      shortLabel: 'Hết hạn',
       badgeClass: 'badge-expired',
-      icon: '🔴',
+      icon: '🔒',
       boxClass: 'expired',
-      hint: '⚠️ Công việc này đã kết thúc vào ngày <b>' + formatVN(end) + '</b>. Thầy/Cô đang nộp bổ sung sau thời hạn.'
+      hint: '⛔ <b>ĐÃ ĐÓNG NỘP MINH CHỨNG:</b> Công việc này đã kết thúc vào ngày <b>' + formatVN(end) + '</b>. Hệ thống không còn nhận minh chứng cho công việc này. Vui lòng liên hệ BGH nếu cần gia hạn.'
     };
   }
 
@@ -1011,21 +1011,27 @@ function onInit(d) {
     }
   });
 
-  // 2. Phân chia 2 nhóm: Chưa làm (ở trên) & Đã làm rồi (ở dưới cùng)
-  var unsubmittedJobs = [];
+  // 2. Phân chia 3 nhóm: Việc đang mở, Việc đã hết hạn (khóa nộp), và Việc đã hoàn thành
+  var openJobs = [];
+  var expiredJobs = [];
   var submittedJobs = [];
 
   availableJobs.forEach(function (j) {
     if (isJobSubmitted(j.name)) {
       submittedJobs.push(j);
     } else {
-      unsubmittedJobs.push(j);
+      var dl = getJobDeadlineInfo(j, state.today);
+      if (dl.status === 'expired') {
+        expiredJobs.push(j);
+      } else {
+        openJobs.push(j);
+      }
     }
   });
 
-  // Sắp xếp nhóm Chưa nộp theo mức độ khẩn cấp (Hết hạn -> Hôm nay -> Sắp hết hạn -> Còn hạn -> Không hạn)
-  var urgencyOrder = { expired: 1, today: 2, soon: 3, active: 4, none: 5 };
-  unsubmittedJobs.sort(function (a, b) {
+  // Sắp xếp nhóm Đang mở theo mức độ khẩn cấp (Hôm nay -> Sắp hết hạn -> Còn hạn -> Không hạn)
+  var urgencyOrder = { today: 1, soon: 2, active: 3, none: 4 };
+  openJobs.sort(function (a, b) {
     var dlA = getJobDeadlineInfo(a, state.today);
     var dlB = getJobDeadlineInfo(b, state.today);
     var diff = (urgencyOrder[dlA.status] || 99) - (urgencyOrder[dlB.status] || 99);
@@ -1037,24 +1043,24 @@ function onInit(d) {
   if (availableJobs.length > 0) {
     var ph = document.createElement('option');
     ph.value = '';
-    if (unsubmittedJobs.length > 0) {
-      ph.textContent = '-- Chọn công việc cần nộp (' + unsubmittedJobs.length + ' việc) --';
+    if (openJobs.length > 0) {
+      ph.textContent = '-- Chọn công việc cần nộp (' + openJobs.length + ' việc đang mở) --';
+    } else if (expiredJobs.length > 0) {
+      ph.textContent = '-- Đã hết hạn ' + expiredJobs.length + ' việc (Không còn việc mở) --';
     } else {
       ph.textContent = '🎉 Thầy/Cô đã hoàn thành tất cả công việc!';
     }
     sel.appendChild(ph);
 
-    // Nhóm 1: VIỆC CẦN LÀM (Hiển thị ở trên cùng)
-    if (unsubmittedJobs.length > 0) {
-      var grpUnsub = document.createElement('optgroup');
-      grpUnsub.label = '📌 VIỆC CẦN LÀM (' + unsubmittedJobs.length + ')';
-      unsubmittedJobs.forEach(function (j) {
+    // Nhóm 1: VIỆC CẦN LÀM (ĐANG MỞ)
+    if (openJobs.length > 0) {
+      var grpOpen = document.createElement('optgroup');
+      grpOpen.label = '📌 VIỆC CẦN LÀM (' + openJobs.length + ')';
+      openJobs.forEach(function (j) {
         var o = document.createElement('option');
         o.value = j.name;
         var dl = getJobDeadlineInfo(j, state.today);
-        if (dl.status === 'expired') {
-          o.textContent = '🔴 [' + dl.shortLabel + '] ' + j.name;
-        } else if (dl.status === 'today') {
+        if (dl.status === 'today') {
           o.textContent = '⚡ [' + dl.shortLabel + '] ' + j.name;
         } else if (dl.status === 'soon') {
           o.textContent = '🟡 [' + dl.shortLabel + '] ' + j.name;
@@ -1062,12 +1068,27 @@ function onInit(d) {
           var endTxt = j.endDate ? (' (Hạn: ' + formatVN(j.endDate) + ')') : '';
           o.textContent = '🟢 ' + j.name + endTxt;
         }
-        grpUnsub.appendChild(o);
+        grpOpen.appendChild(o);
       });
-      sel.appendChild(grpUnsub);
+      sel.appendChild(grpOpen);
     }
 
-    // Nhóm 2: ĐÃ HOÀN THÀNH (Hiển thị ở phía dưới cùng)
+    // Nhóm 2: ĐÃ HẾT HẠN (ĐÃ KHÓA NỘP)
+    if (expiredJobs.length > 0) {
+      var grpExpired = document.createElement('optgroup');
+      grpExpired.label = '🔒 ĐÃ HẾT HẠN - ĐÃ KHÓA (' + expiredJobs.length + ')';
+      expiredJobs.forEach(function (j) {
+        var o = document.createElement('option');
+        o.value = j.name;
+        var dl = getJobDeadlineInfo(j, state.today);
+        o.textContent = '🔒 [' + dl.shortLabel + '] ' + j.name;
+        o.style.color = '#C5221F';
+        grpExpired.appendChild(o);
+      });
+      sel.appendChild(grpExpired);
+    }
+
+    // Nhóm 3: ĐÃ HOÀN THÀNH
     if (submittedJobs.length > 0) {
       var grpSub = document.createElement('optgroup');
       grpSub.label = '✅ ĐÃ HOÀN THÀNH (' + submittedJobs.length + ')';
@@ -1355,7 +1376,26 @@ function compress(file) {
   });
 }
 
-$('addBtn').addEventListener('click', function () { $('picker').click(); });
+$('addBtn').addEventListener('click', function () {
+  var job = $('job').value;
+  if (job) {
+    var jobObj = (state.jobs || []).find(function (item) {
+      return String(item.name || '').trim().toLowerCase() === String(job).trim().toLowerCase();
+    });
+    if (jobObj) {
+      var checkDl = getJobDeadlineInfo(jobObj, state.today);
+      if (checkDl.status === 'expired') {
+        showErr('Công việc "' + jobObj.name + '" đã hết hạn nộp. Hệ thống đã khóa nhận minh chứng!', 'Công việc đã hết hạn');
+        return;
+      }
+      if (isJobSubmitted(jobObj.name)) {
+        showErr('Công việc "' + jobObj.name + '" Thầy/Cô đã nộp rồi. Mỗi công việc chỉ nộp 1 lần!', 'Đã nộp bài');
+        return;
+      }
+    }
+  }
+  $('picker').click();
+});
 
 $('picker').addEventListener('change', async function (e) {
   var list = Array.prototype.slice.call(e.target.files);
@@ -1375,6 +1415,23 @@ $('picker').addEventListener('change', async function (e) {
 /* Dán ảnh trực tiếp từ Clipboard (Ctrl+V / Cmd+V) */
 window.addEventListener('paste', async function (e) {
   if ($('formView').hidden) return;
+  var job = $('job').value;
+  if (job) {
+    var jobObj = (state.jobs || []).find(function (item) {
+      return String(item.name || '').trim().toLowerCase() === String(job).trim().toLowerCase();
+    });
+    if (jobObj) {
+      var checkDl = getJobDeadlineInfo(jobObj, state.today);
+      if (checkDl.status === 'expired') {
+        showErr('Công việc "' + jobObj.name + '" đã hết hạn nộp. Hệ thống không nhận thêm ảnh!', 'Công việc đã hết hạn');
+        return;
+      }
+      if (isJobSubmitted(jobObj.name)) {
+        showErr('Công việc "' + jobObj.name + '" Thầy/Cô đã nộp rồi!', 'Đã nộp bài');
+        return;
+      }
+    }
+  }
   var items = (e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData)) ? (e.clipboardData || e.originalEvent.clipboardData).items : null;
   if (!items) return;
   var addedCount = 0;
@@ -1553,11 +1610,48 @@ function onJobSelected(jobVal) {
       '</div>' +
       '<div>' + dl.hint + '</div>';
     dBox.style.display = 'block';
+
+    var sendBtn = $('sendBtn');
+    var addBtn = $('addBtn');
+    var isSubmitted = isJobSubmitted(j.name);
+
+    if (isSubmitted) {
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.6';
+      sendBtn.style.cursor = 'not-allowed';
+      sendBtn.textContent = '✅ Đã nộp công việc này rồi';
+      if (addBtn) { addBtn.disabled = true; addBtn.style.opacity = '0.5'; addBtn.style.cursor = 'not-allowed'; }
+    } else if (dl.status === 'expired') {
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.6';
+      sendBtn.style.cursor = 'not-allowed';
+      sendBtn.textContent = '🔒 Đã hết hạn nộp minh chứng';
+      if (addBtn) { addBtn.disabled = true; addBtn.style.opacity = '0.5'; addBtn.style.cursor = 'not-allowed'; }
+    } else {
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = '';
+      sendBtn.style.cursor = '';
+      sendBtn.textContent = 'Nộp minh chứng';
+      if (addBtn) { addBtn.disabled = false; addBtn.style.opacity = ''; addBtn.style.cursor = ''; }
+    }
   } else {
     var defDate = formatVN(state.today) || '';
     $('startDate').value = defDate;
     $('endDate').value = defDate;
     $('deadlineBox').style.display = 'none';
+    var sendBtn = $('sendBtn');
+    var addBtn = $('addBtn');
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = '';
+      sendBtn.style.cursor = '';
+      sendBtn.textContent = 'Nộp minh chứng';
+    }
+    if (addBtn) {
+      addBtn.disabled = false;
+      addBtn.style.opacity = '';
+      addBtn.style.cursor = '';
+    }
   }
 }
 
@@ -1601,6 +1695,9 @@ $('sendBtn').addEventListener('click', async function () {
     var checkDl = getJobDeadlineInfo(jobObj, state.today);
     if (checkDl.status === 'upcoming') {
       return showErr('Công việc "' + job + '" chưa đến thời gian mở (' + checkDl.label + ').\n\nThầy/Cô vui lòng quay lại sau khi công việc chính thức mở!', 'Chưa đến giờ mở');
+    }
+    if (checkDl.status === 'expired') {
+      return showErr('Công việc "' + job + '" đã hết hạn nộp vào ' + (jobObj.endDate ? formatVN(jobObj.endDate) : '') + '.\n\n📌 Hệ thống đã đóng nhận minh chứng cho công việc này. Kính nhờ Thầy/Cô liên hệ BGH nếu cần gia hạn!', 'Công việc đã hết hạn');
     }
   }
 

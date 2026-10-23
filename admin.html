@@ -872,7 +872,7 @@ function getJobDeadlineInfo(job, todayStr) {
   if (now > dEnd) {
     var msOver = now.getTime() - dEnd.getTime();
     var overdueDays = Math.max(1, Math.floor(msOver / (1000 * 60 * 60 * 24)));
-    return { status: 'expired', label: 'Quá hạn ' + overdueDays + ' ngày', shortLabel: 'Quá hạn ' + overdueDays + ' ngày', badgeClass: 'badge-expired', icon: '🔴' };
+    return { status: 'expired', label: 'Đã hết hạn (' + overdueDays + ' ngày trước)', shortLabel: 'Đã đóng nộp', badgeClass: 'badge-expired', icon: '🔒' };
   }
 
   // 3. Active / Soon / Today
@@ -1180,7 +1180,9 @@ function renderDashboard(d) {
   (d.jobs || []).forEach(function (j) {
     var opt = document.createElement('option');
     opt.value = j.name;
-    opt.textContent = j.name + (j.endDate ? (' (Hạn: ' + formatVN(j.endDate) + ')') : '');
+    var dlJ = getJobDeadlineInfo(j, state.today);
+    var prefix = dlJ.status === 'expired' ? '🔒 ' : '';
+    opt.textContent = prefix + j.name + (j.endDate ? (' (Hạn: ' + formatVN(j.endDate) + (dlJ.status === 'expired' ? ' - Đã đóng' : '') + ')') : '');
     if (j.name === d.currentJob) opt.selected = true;
     sel.appendChild(opt);
   });
