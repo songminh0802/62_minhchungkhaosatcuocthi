@@ -522,27 +522,63 @@ async function call(fn) {
     payload.args = args;
   }
 
-  var res = await fetch(SCRIPT_URL, {
+  var fetchOptions = {
     method: 'POST',
+    credentials: 'omit',
+    redirect: 'follow',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
-  });
+  };
 
-  if (!res.ok) {
-    throw new Error('Máy chủ phản hồi mã lỗi HTTP: ' + res.status);
+  var rawText = '';
+  var json = null;
+
+  try {
+    var res = await fetch(SCRIPT_URL, fetchOptions);
+    if (res.ok) {
+      rawText = await res.text();
+      try {
+        json = JSON.parse(rawText);
+      } catch (eJson) {}
+    }
+  } catch (ePost) {
+    console.warn('POST fetch error:', ePost);
   }
 
-  var rawText = await res.text();
-  var json;
-  try {
-    json = JSON.parse(rawText);
-  } catch (parseErr) {
-    var match = rawText.match(/class="errorMessage">([^<]+)<\/div>/i) || rawText.match(/margin:50px auto 0;[^>]*>([^<]+)<\/div>/i);
-    var errDetail = match ? match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '';
-    if (errDetail) {
+  // Fallback qua GET nếu là getInitData mà POST không trả về JSON hợp lệ
+  if ((!json || json.status === 'error') && fn === 'getInitData') {
+    try {
+      var getParams = '?action=getInitData&asName=' + encodeURIComponent(payload.asName || '');
+      var getRes = await fetch(SCRIPT_URL + getParams, {
+        method: 'GET',
+        credentials: 'omit',
+        redirect: 'follow'
+      });
+      if (getRes.ok) {
+        var getText = await getRes.text();
+        json = JSON.parse(getText);
+      }
+    } catch (eGet) {
+      console.warn('GET fallback error:', eGet);
+    }
+  }
+
+  if (!json) {
+    console.error('Phản hồi từ Google Apps Script không phải JSON:', rawText);
+    if (/accountchooser|accounts\.google\.com|ServiceLogin/i.test(rawText)) {
+      throw new Error('Trình duyệt đang bị xung đột nhiều tài khoản Google. Vui lòng mở trang trong cửa sổ ẩn danh (Ctrl+Shift+N) hoặc chỉ đăng nhập 1 tài khoản Google.');
+    }
+    if (/Authorization is required|drive\.google\.com\/.*permission/i.test(rawText)) {
+      throw new Error('Google Apps Script yêu cầu cấp lại quyền. Quản trị viên vui lòng mở Apps Script và bấm Cấp quyền (Review Permissions).');
+    }
+    var match = rawText.match(/class="errorMessage">([^<]+)<\/div>/i) ||
+                rawText.match(/margin:50px auto 0;[^>]*>([^<]+)<\/div>/i) ||
+                rawText.match(/<title>([^<]+)<\/title>/i);
+    var errDetail = match ? match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim() : '';
+    if (errDetail && errDetail !== 'Google Docs - Exception' && errDetail !== 'Error') {
       throw new Error(errDetail);
     }
-    throw new Error('Máy chủ trả về phản hồi không hợp lệ (không phải JSON).');
+    throw new Error('Máy chủ Google Apps Script chưa phản hồi JSON. Vui lòng thử tải lại trang hoặc kiểm tra kết nối.');
   }
 
   if (json.status === 'error' || json.error) {
