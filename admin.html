@@ -109,10 +109,28 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
 .admin-tab{padding:12px 20px;border:0;background:transparent;font-size:15px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
 .admin-tab.active{color:var(--brand);border-bottom-color:var(--brand)}
 
-/* Hộp sao chép Zalo */
-.zalo-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
-.btn-zalo{background:#0068FF;color:#fff;border:0;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,104,255,.3);transition:background .15s ease}
-.btn-zalo:hover{background:#0053cc}
+/* Hộp sao chép Zalo & Danh sách chưa làm */
+.zalo-box{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.zalo-box-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn-copy-unsub{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(31,77,69,.25);transition:all .15s ease}
+.btn-copy-unsub:hover{background:var(--brand-dark);transform:translateY(-1px)}
+.btn-zalo{background:#0068FF;color:#fff;border:0;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,104,255,.3);transition:all .15s ease}
+.btn-zalo:hover{background:#0053cc;transform:translateY(-1px)}
+.btn-copy-one{background:#EFF6FF;color:#0F4C81;border:1px solid #BFDBFE;border-radius:6px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease}
+.btn-copy-one:hover{background:#DBEAFE;border-color:#93C5FD;color:#1D4ED8;transform:translateY(-1px)}
+
+/* Bộ lọc theo Tổ trong tab Chưa nộp */
+.unsub-filter-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:10px 14px;background:#FAFBF9;border:1px solid var(--line);border-radius:10px;flex-wrap:wrap;gap:10px}
+.unsub-group-select{padding:7px 14px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:var(--ink);cursor:pointer;outline:none;transition:border-color .15s}
+.unsub-group-select:focus{border-color:var(--brand)}
+.group-stat-chip{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.group-stat-chip:hover{transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.06);border-color:var(--brand)}
+@media (max-width: 560px){
+  .zalo-box-actions{width:100%}
+  .zalo-box-actions button{flex:1;justify-content:center;min-width:135px}
+  .unsub-filter-bar{flex-direction:column;align-items:stretch}
+  .unsub-group-select{width:100%}
+}
 
 /* Danh sách GV */
 .gv-list{display:flex;flex-direction:column;gap:10px}
@@ -383,19 +401,35 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
       </button>
     </div>
 
-    <!-- Tab 1: Danh sách Chưa nộp + Nút Copy Zalo -->
+    <!-- Tab 1: Danh sách Chưa nộp + Nút Copy Zalo & Copy GV chưa làm -->
     <div id="tabUnsubContent">
       <div class="zalo-box">
         <div style="display:flex;align-items:center;gap:12px;">
           <div style="width:42px;height:42px;border-radius:10px;background:#0068FF;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:20px;flex-shrink:0;">Z</div>
           <div>
-            <b style="font-size:15px;color:#0F4C81;">Nhắc nhở qua Zalo</b>
-            <div style="font-size:13px;color:var(--muted);">Sao chép danh sách Thầy/Cô chưa nộp để gửi vào nhóm Zalo trường / tổ</div>
+            <b style="font-size:15px;color:#0F4C81;">Nhắc nhở & Sao chép danh sách</b>
+            <div style="font-size:13px;color:var(--muted);">Sao chép danh sách Thầy/Cô chưa nộp hoặc tạo mẫu tin gửi Zalo trường / tổ</div>
           </div>
         </div>
-        <button type="button" id="copyZaloBtn" class="btn-zalo">
-          📋 Sao chép danh sách gửi Zalo
-        </button>
+        <div class="zalo-box-actions">
+          <button type="button" id="copyUnsubBtn" class="btn-copy-unsub" title="Chỉ sao chép danh sách họ tên các Thầy/Cô chưa làm">
+            📋 Copy GV chưa làm
+          </button>
+          <button type="button" id="copyZaloBtn" class="btn-zalo" title="Sao chép toàn bộ mẫu tin thông báo gửi Zalo">
+            💬 Sao chép gửi Zalo
+          </button>
+        </div>
+      </div>
+
+      <!-- Thanh lọc theo Tổ / Bộ môn -->
+      <div class="unsub-filter-bar">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);">
+          <span>🏢 Lọc theo Tổ:</span>
+          <select id="unsubGroupFilter" class="unsub-group-select">
+            <option value="">Tất cả các tổ</option>
+          </select>
+        </div>
+        <div id="unsubFilterCount" style="font-size:13px;color:var(--muted);font-weight:600;"></div>
       </div>
 
       <div id="unsubmittedList" class="gv-list"></div>
@@ -581,6 +615,44 @@ function showToast(msg) {
   }, 2600);
 }
 
+function copyToClipboard(text, successMsg) {
+  if (!text) return;
+  var done = false;
+
+  function fallbackCopy() {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      ta.setAttribute('readonly', '');
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.setSelectionRange(0, text.length);
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) {
+        showToast(successMsg || '📋 Đã sao chép vào bộ nhớ tạm!');
+        done = true;
+      }
+    } catch (e) {}
+    if (!done) {
+      showToast('⚠️ Trình duyệt chặn sao chép tự động. Vui lòng thử lại.');
+    }
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(function () {
+      showToast(successMsg || '📋 Đã sao chép vào bộ nhớ tạm!');
+    }).catch(function () {
+      fallbackCopy();
+    });
+  } else {
+    fallbackCopy();
+  }
+}
+
 function showAlert(msg, title, isError) {
   if (!msg) {
     $('alertModal').hidden = true;
@@ -716,6 +788,16 @@ async function call(fn) {
 
 function padZero(n) {
   return n < 10 ? '0' + n : '' + n;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatVN(dStr) {
@@ -1252,11 +1334,12 @@ function renderDashboard(d) {
   (d.groupStats || []).forEach(function (g) {
     var chip = document.createElement('div');
     chip.className = 'group-stat-chip';
+    chip.title = 'Bấm để xem danh sách & lọc GV tổ ' + g.name;
     var isFull = g.percent === 100;
     var reqT = g.required !== undefined ? g.required : g.total;
     chip.innerHTML =
       '<div class="group-stat-head">' +
-        '<span>' + g.name + '</span>' +
+        '<span>' + escapeHtml(g.name) + '</span>' +
         '<b style="color:' + (isFull ? '#137333' : '#1F4D45') + '">' +
           g.submitted + '/' + reqT + ' (' + g.percent + '%)' +
           (g.exempt > 0 ? (' <span style="font-size:11px;font-weight:normal;color:#5E35B1;">(Miễn ' + g.exempt + ')</span>') : '') +
@@ -1265,6 +1348,16 @@ function renderDashboard(d) {
       '<div class="group-stat-bar">' +
         '<div class="group-stat-fill" style="width:' + g.percent + '%; background:' + (isFull ? '#137333' : '#1F4D45') + '"></div>' +
       '</div>';
+    chip.addEventListener('click', function () {
+      switchAdminTab('tabUnsub');
+      var sel = $('unsubGroupFilter');
+      if (sel) {
+        sel.value = g.name;
+        renderUnsubmittedList();
+      }
+      var target = $('tabUnsubContent');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
     gBox.appendChild(chip);
   });
 
@@ -1273,27 +1366,9 @@ function renderDashboard(d) {
   $('tabSubCount').textContent = d.submittedList.length;
   $('tabExemptCount').textContent = (d.exemptList || []).length;
 
-  // 6. Danh sách Chưa nộp
-  var unsubBox = $('unsubmittedList');
-  unsubBox.innerHTML = '';
-  if (d.unsubmittedList.length === 0) {
-    unsubBox.innerHTML = '<div style="text-align:center;padding:26px;background:#F0F9F4;border-radius:10px;color:#137333;font-weight:600;">🎉 Tuyệt vời! 100% giáo viên đã hoàn thành nộp minh chứng cho công việc này!</div>';
-  } else {
-    d.unsubmittedList.forEach(function (t, idx) {
-      var row = document.createElement('div');
-      row.className = 'gv-row';
-      row.innerHTML =
-        '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<span style="font-size:12px;color:var(--muted);width:22px;text-align:right;">' + (idx + 1) + '.</span>' +
-          '<div>' +
-            '<b style="font-size:15px;color:var(--ink);">' + t.name + '</b>' +
-            (t.group ? (' <span style="font-size:12px;color:var(--muted);">(' + t.group + ')</span>') : '') +
-          '</div>' +
-        '</div>' +
-        '<span class="badge badge-warning">Chưa nộp</span>';
-      unsubBox.appendChild(row);
-    });
-  }
+  // 6. Danh sách Chưa nộp & Bộ lọc tổ
+  populateUnsubGroupFilter(d);
+  renderUnsubmittedList();
 
   // 7. Danh sách Đã nộp
   var subBox = $('submittedList');
@@ -1412,6 +1487,134 @@ $('tabUnsubBtn').addEventListener('click', function () { switchAdminTab('tabUnsu
 $('tabSubBtn').addEventListener('click', function () { switchAdminTab('tabSub'); });
 $('tabExemptBtn').addEventListener('click', function () { switchAdminTab('tabExempt'); });
 
+/* ---------- Bộ lọc & Hiển thị Danh sách Chưa nộp ---------- */
+function populateUnsubGroupFilter(d) {
+  var sel = $('unsubGroupFilter');
+  if (!sel) return;
+  var currentVal = sel.value || '';
+
+  var groupMap = {};
+  (d.unsubmittedList || []).forEach(function (t) {
+    var g = (t.group || 'Chung').trim();
+    groupMap[g] = (groupMap[g] || 0) + 1;
+  });
+
+  sel.innerHTML = '<option value="">🏢 Tất cả các tổ (' + (d.unsubmittedList ? d.unsubmittedList.length : 0) + ' GV chưa nộp)</option>';
+
+  var groups = [];
+  if (d.groupStats && d.groupStats.length) {
+    d.groupStats.forEach(function (gs) {
+      if (groups.indexOf(gs.name) === -1) groups.push(gs.name);
+    });
+  }
+  Object.keys(groupMap).forEach(function (g) {
+    if (groups.indexOf(g) === -1) groups.push(g);
+  });
+
+  groups.forEach(function (g) {
+    var count = groupMap[g] || 0;
+    var opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = g + ' (' + count + ' chưa nộp)';
+    if (g === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderUnsubmittedList() {
+  if (!state.adminData) return;
+  var d = state.adminData;
+  var sel = $('unsubGroupFilter');
+  var selGroup = sel ? sel.value : '';
+
+  var filteredList = (d.unsubmittedList || []).filter(function (t) {
+    if (!selGroup) return true;
+    return String(t.group || 'Chung').trim().toLowerCase() === selGroup.trim().toLowerCase();
+  });
+
+  var countEl = $('unsubFilterCount');
+  if (countEl) {
+    if (selGroup) {
+      countEl.textContent = 'Tổ ' + selGroup + ': ' + filteredList.length + ' GV chưa nộp';
+    } else {
+      countEl.textContent = 'Toàn trường: ' + filteredList.length + ' GV chưa nộp';
+    }
+  }
+
+  var unsubBox = $('unsubmittedList');
+  if (!unsubBox) return;
+  unsubBox.innerHTML = '';
+
+  if (filteredList.length === 0) {
+    unsubBox.innerHTML = '<div style="text-align:center;padding:26px;background:#F0F9F4;border-radius:10px;color:#137333;font-weight:600;">' +
+      (selGroup ? ('🎉 Tuyệt vời! Tổ ' + escapeHtml(selGroup) + ' đã hoàn thành nộp minh chứng 100%!') : '🎉 Tuyệt vời! 100% giáo viên đã hoàn thành nộp minh chứng cho công việc này!') +
+      '</div>';
+    return;
+  }
+
+  filteredList.forEach(function (t, idx) {
+    var row = document.createElement('div');
+    row.className = 'gv-row';
+    row.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;min-width:0;">' +
+        '<span style="font-size:12px;color:var(--muted);width:22px;text-align:right;flex-shrink:0;">' + (idx + 1) + '.</span>' +
+        '<div style="min-width:0;word-break:break-word;">' +
+          '<b style="font-size:15px;color:var(--ink);">' + escapeHtml(t.name) + '</b>' +
+          (t.group ? (' <span style="font-size:12px;color:var(--muted);">(' + escapeHtml(t.group) + ')</span>') : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+        '<button type="button" class="btn-copy-one" data-name="' + escapeHtml(t.name) + '" title="Sao chép họ tên ' + escapeHtml(t.name) + '">' +
+          '📋 Copy' +
+        '</button>' +
+        '<span class="badge badge-warning">Chưa nộp</span>' +
+      '</div>';
+    unsubBox.appendChild(row);
+  });
+
+  unsubBox.querySelectorAll('.btn-copy-one').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var gvName = btn.getAttribute('data-name');
+      copyToClipboard(gvName, '📋 Đã sao chép: ' + gvName);
+    });
+  });
+}
+
+$('unsubGroupFilter').addEventListener('change', function () {
+  renderUnsubmittedList();
+});
+
+/* ---------- Sao chép Giáo viên chưa làm ---------- */
+$('copyUnsubBtn').addEventListener('click', function () {
+  if (!state.adminData) return;
+  var d = state.adminData;
+  var sel = $('unsubGroupFilter');
+  var selGroup = sel ? sel.value : '';
+
+  var list = (d.unsubmittedList || []).filter(function (t) {
+    if (!selGroup) return true;
+    return String(t.group || 'Chung').trim().toLowerCase() === selGroup.trim().toLowerCase();
+  });
+
+  if (list.length === 0) {
+    showToast(selGroup ? ('🎉 Tổ ' + selGroup + ' đã hoàn thành 100%!') : '🎉 100% giáo viên đã hoàn thành!');
+    return;
+  }
+
+  var title = selGroup
+    ? ('⚠️ DANH SÁCH GIÁO VIÊN TỔ ' + selGroup.toUpperCase() + ' CHƯA NỘP MINH CHỨNG (' + list.length + ' Thầy/Cô):\n')
+    : ('⚠️ DANH SÁCH ' + list.length + ' THẦY/CÔ CHƯA NỘP MINH CHỨNG:\n');
+
+  var text = title +
+    (d.currentJob ? ('📌 Công việc: ' + d.currentJob + '\n\n') : '\n') +
+    list.map(function (t, idx) {
+      return (idx + 1) + '. ' + t.name + (t.group && !selGroup ? (' (' + t.group + ')') : '');
+    }).join('\n');
+
+  copyToClipboard(text, '📋 Đã sao chép danh sách ' + list.length + ' GV chưa làm!');
+});
+
 /* ---------- Sao chép Zalo ---------- */
 $('copyZaloBtn').addEventListener('click', function () {
   if (!state.adminData) return;
@@ -1424,23 +1627,38 @@ $('copyZaloBtn').addEventListener('click', function () {
                (typeof google !== 'undefined' && typeof google.script !== 'undefined'));
   var teacherUrl = isGas ? (SCRIPT_URL + '?page=index') : window.location.href.split('?')[0].replace(/admin(\.html)?$/, 'index.html');
 
+  var sel = $('unsubGroupFilter');
+  var selGroup = sel ? sel.value : '';
+
+  var list = (d.unsubmittedList || []).filter(function (t) {
+    if (!selGroup) return true;
+    return String(t.group || 'Chung').trim().toLowerCase() === selGroup.trim().toLowerCase();
+  });
+
   var reqCount = d.requiredCount !== undefined ? d.requiredCount : d.totalGV;
-  var text = '📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG\n' +
+  var headerTag = selGroup ? ('📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG - TỔ ' + selGroup.toUpperCase() + '\n') : '📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG\n';
+
+  var text = headerTag +
     schoolName + '\n' +
     '📌 Công việc: ' + d.currentJob + '\n' +
     (currentJob.endDate ? ('⏰ Hạn chót: ' + formatVN(currentJob.endDate) + '\n') : '') +
     '📊 Tiến độ: ' + d.submittedCount + '/' + reqCount + ' GV (' + d.percent + '%)' +
     (d.exemptCount > 0 ? (' [Miễn nộp: ' + d.exemptCount + ' GV]') : '') + '\n\n';
 
-  if (!d.unsubmittedList || d.unsubmittedList.length === 0) {
-    text += '🎉 100% Thầy/Cô đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn quý Thầy/Cô!';
+  if (!list || list.length === 0) {
+    text += selGroup
+      ? ('🎉 100% Thầy/Cô Tổ ' + selGroup + ' đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn!')
+      : '🎉 100% Thầy/Cô đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn quý Thầy/Cô!';
   } else {
-    text += '⚠️ DANH SÁCH ' + d.unsubmittedList.length + ' THẦY/CÔ CHƯA NỘP MINH CHỨNG:\n';
-    d.unsubmittedList.forEach(function (t, idx) {
-      text += (idx + 1) + '. ' + t.name + (t.group ? (' (' + t.group + ')') : '') + '\n';
+    text += selGroup
+      ? ('⚠️ DANH SÁCH ' + list.length + ' THẦY/CÔ TỔ ' + selGroup.toUpperCase() + ' CHƯA NỘP MINH CHỨNG:\n')
+      : ('⚠️ DANH SÁCH ' + list.length + ' THẦY/CÔ CHƯA NỘP MINH CHỨNG:\n');
+
+    list.forEach(function (t, idx) {
+      text += (idx + 1) + '. ' + t.name + (t.group && !selGroup ? (' (' + t.group + ')') : '') + '\n';
     });
 
-    if (d.exemptList && d.exemptList.length > 0) {
+    if (!selGroup && d.exemptList && d.exemptList.length > 0) {
       text += '\n🛡️ Miễn nộp (' + d.exemptList.length + ' GV): ';
       var exNames = d.exemptList.map(function (e) {
         return e.name + (e.reason && e.reason !== 'Được miễn nộp' ? ' (' + e.reason + ')' : '');
@@ -1453,17 +1671,7 @@ $('copyZaloBtn').addEventListener('click', function () {
       'Trân trọng!';
   }
 
-  navigator.clipboard.writeText(text).then(function () {
-    showToast('📋 Đã sao chép danh sách Zalo vào bộ nhớ đệm!');
-  }).catch(function () {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showToast('📋 Đã sao chép danh sách Zalo!');
-  });
+  copyToClipboard(text, '📋 Đã sao chép danh sách Zalo vào bộ nhớ đệm!');
 });
 
 /* ---------- Modal Thêm Công Việc ---------- */
