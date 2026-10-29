@@ -121,17 +121,25 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
 .btn-quick-submit{background:#E6F4EA;color:#137333;border:1px solid #CEEAD6;border-radius:6px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease}
 .btn-quick-submit:hover{background:#137333;color:#fff;border-color:#137333;transform:translateY(-1px)}
 
-/* Bộ lọc theo Tổ trong tab Chưa nộp */
+/* Bộ lọc theo Tổ & Tìm kiếm nhanh trong tab Chưa nộp / Đã nộp */
 .unsub-filter-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding:10px 14px;background:#FAFBF9;border:1px solid var(--line);border-radius:10px;flex-wrap:wrap;gap:10px}
-.unsub-group-select{padding:7px 14px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:var(--ink);cursor:pointer;outline:none;transition:border-color .15s}
+.filter-controls-group{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1}
+.unsub-group-select{padding:8px 14px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:var(--ink);cursor:pointer;outline:none;transition:border-color .15s;min-height:38px}
 .unsub-group-select:focus{border-color:var(--brand)}
+.search-gv-wrap{position:relative;flex:1;min-width:210px;max-width:340px;display:flex;align-items:center}
+.search-gv-input{width:100%;padding:8px 32px 8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s;min-height:38px}
+.search-gv-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(31,77,69,.1)}
+.search-gv-clear{position:absolute;right:6px;background:transparent;border:0;color:var(--muted);font-size:16px;line-height:1;padding:4px 6px;cursor:pointer;border-radius:50%;display:none}
+.search-gv-clear:hover{background:#EAECE7;color:var(--ink)}
 .group-stat-chip{cursor:pointer;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
 .group-stat-chip:hover{transform:translateY(-2px);box-shadow:0 3px 10px rgba(0,0,0,.06);border-color:var(--brand)}
 @media (max-width: 560px){
   .zalo-box-actions{width:100%}
   .zalo-box-actions button{flex:1;justify-content:center;min-width:135px}
   .unsub-filter-bar{flex-direction:column;align-items:stretch}
+  .filter-controls-group{flex-direction:column;align-items:stretch}
   .unsub-group-select{width:100%}
+  .search-gv-wrap{max-width:100%;width:100%}
 }
 
 /* Danh sách GV */
@@ -423,13 +431,19 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
         </div>
       </div>
 
-      <!-- Thanh lọc theo Tổ / Bộ môn -->
+      <!-- Thanh lọc theo Tổ & Tìm kiếm nhanh (Chưa nộp) -->
       <div class="unsub-filter-bar">
-        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);">
-          <span>🏢 Lọc theo Tổ:</span>
-          <select id="unsubGroupFilter" class="unsub-group-select">
-            <option value="">Tất cả các tổ</option>
-          </select>
+        <div class="filter-controls-group">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);">
+            <span>🏢 Tổ:</span>
+            <select id="unsubGroupFilter" class="unsub-group-select">
+              <option value="">Tất cả các tổ</option>
+            </select>
+          </div>
+          <div class="search-gv-wrap">
+            <input type="text" id="unsubSearchInput" class="search-gv-input" placeholder="🔍 Gõ tên giáo viên để tìm nhanh...">
+            <button type="button" id="unsubSearchClear" class="search-gv-clear" title="Xóa tìm kiếm">&times;</button>
+          </div>
         </div>
         <div id="unsubFilterCount" style="font-size:13px;color:var(--muted);font-weight:600;"></div>
       </div>
@@ -439,6 +453,23 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
 
     <!-- Tab 2: Danh sách Đã nộp + Mở khóa nộp lại -->
     <div id="tabSubContent" style="display:none;">
+      <!-- Thanh lọc theo Tổ & Tìm kiếm nhanh (Đã nộp) -->
+      <div class="unsub-filter-bar">
+        <div class="filter-controls-group">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--muted);">
+            <span>🏢 Tổ:</span>
+            <select id="subGroupFilter" class="unsub-group-select">
+              <option value="">Tất cả các tổ</option>
+            </select>
+          </div>
+          <div class="search-gv-wrap">
+            <input type="text" id="subSearchInput" class="search-gv-input" placeholder="🔍 Gõ tên giáo viên hoặc ghi chú để tìm...">
+            <button type="button" id="subSearchClear" class="search-gv-clear" title="Xóa tìm kiếm">&times;</button>
+          </div>
+        </div>
+        <div id="subFilterCount" style="font-size:13px;color:var(--muted);font-weight:600;"></div>
+      </div>
+
       <div id="submittedList" class="gv-list"></div>
     </div>
 
@@ -831,6 +862,17 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function removeVietnameseTones(str) {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
 }
 
 function formatVN(dStr) {
@@ -1403,70 +1445,9 @@ function renderDashboard(d) {
   populateUnsubGroupFilter(d);
   renderUnsubmittedList();
 
-  // 7. Danh sách Đã nộp
-  var subBox = $('submittedList');
-  subBox.innerHTML = '';
-  if (d.submittedList.length === 0) {
-    subBox.innerHTML = '<div style="text-align:center;padding:26px;color:var(--muted);">Chưa có giáo viên nào nộp minh chứng cho công việc này.</div>';
-  } else {
-    d.submittedList.forEach(function (sub, idx) {
-      var item = document.createElement('div');
-      item.className = 'gv-sub-item';
-
-      var head = document.createElement('div');
-      head.style.display = 'flex';
-      head.style.justifyContent = 'space-between';
-      head.style.alignItems = 'flex-start';
-      head.style.gap = '8px';
-
-      head.innerHTML =
-        '<div>' +
-          '<b style="font-size:15px;color:var(--brand);">' + (idx + 1) + '. ' + sub.name + '</b>' +
-          (sub.group ? (' <span style="font-size:12px;color:var(--muted);">• ' + sub.group + '</span>') : '') +
-          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">🕒 ' + formatVNTime(sub.time) + '</div>' +
-        '</div>' +
-        '<span class="badge badge-done">' + (sub.count || (sub.files && sub.files.length) || 1) + ' ảnh</span>';
-
-      item.appendChild(head);
-
-      if (sub.note) {
-        var nDiv = document.createElement('div');
-        nDiv.className = 'recent-note';
-        nDiv.textContent = '“' + sub.note + '”';
-        item.appendChild(nDiv);
-      }
-
-      var actRow = document.createElement('div');
-      actRow.style.display = 'flex';
-      actRow.style.justifyContent = 'space-between';
-      actRow.style.alignItems = 'center';
-      actRow.style.gap = '8px';
-      actRow.style.marginTop = '4px';
-
-      var viewBtn = document.createElement('button');
-      viewBtn.type = 'button';
-      viewBtn.className = 'btn-sm-view';
-      viewBtn.innerHTML = '👁️ Xem ảnh (' + (sub.count || (sub.files && sub.files.length) || 0) + ')';
-      viewBtn.addEventListener('click', function () {
-        openEvidenceModal(sub);
-      });
-
-      var unlockBtn = document.createElement('button');
-      unlockBtn.type = 'button';
-      unlockBtn.className = 'btn-del-sub';
-      unlockBtn.innerHTML = '🗑️ Mở khóa nộp lại';
-      unlockBtn.title = 'Xóa bài nộp này trên bảng tính để giáo viên có thể nộp lại';
-      unlockBtn.addEventListener('click', function () {
-        confirmDeleteSubmission(sub);
-      });
-
-      actRow.appendChild(viewBtn);
-      actRow.appendChild(unlockBtn);
-      item.appendChild(actRow);
-
-      subBox.appendChild(item);
-    });
-  }
+  // 7. Danh sách Đã nộp & Bộ lọc tổ
+  populateSubGroupFilter(d);
+  renderSubmittedList();
 
   // 8. Danh sách Miễn nộp
   var exBox = $('exemptList');
@@ -1559,15 +1540,29 @@ function renderUnsubmittedList() {
   var d = state.adminData;
   var sel = $('unsubGroupFilter');
   var selGroup = sel ? sel.value : '';
+  var searchRaw = ($('unsubSearchInput') && $('unsubSearchInput').value) || '';
+  var kw = removeVietnameseTones(searchRaw);
+
+  var clearBtn = $('unsubSearchClear');
+  if (clearBtn) clearBtn.style.display = searchRaw ? 'block' : 'none';
 
   var filteredList = (d.unsubmittedList || []).filter(function (t) {
-    if (!selGroup) return true;
-    return String(t.group || 'Chung').trim().toLowerCase() === selGroup.trim().toLowerCase();
+    if (selGroup && String(t.group || 'Chung').trim().toLowerCase() !== selGroup.trim().toLowerCase()) {
+      return false;
+    }
+    if (kw) {
+      var nameNoTone = removeVietnameseTones(t.name || '');
+      var groupNoTone = removeVietnameseTones(t.group || '');
+      if (nameNoTone.indexOf(kw) === -1 && groupNoTone.indexOf(kw) === -1) return false;
+    }
+    return true;
   });
 
   var countEl = $('unsubFilterCount');
   if (countEl) {
-    if (selGroup) {
+    if (kw) {
+      countEl.textContent = 'Tìm thấy: ' + filteredList.length + ' GV';
+    } else if (selGroup) {
       countEl.textContent = 'Tổ ' + selGroup + ': ' + filteredList.length + ' GV chưa nộp';
     } else {
       countEl.textContent = 'Toàn trường: ' + filteredList.length + ' GV chưa nộp';
@@ -1579,9 +1574,13 @@ function renderUnsubmittedList() {
   unsubBox.innerHTML = '';
 
   if (filteredList.length === 0) {
-    unsubBox.innerHTML = '<div style="text-align:center;padding:26px;background:#F0F9F4;border-radius:10px;color:#137333;font-weight:600;">' +
-      (selGroup ? ('🎉 Tuyệt vời! Tổ ' + escapeHtml(selGroup) + ' đã hoàn thành nộp minh chứng 100%!') : '🎉 Tuyệt vời! 100% giáo viên đã hoàn thành nộp minh chứng cho công việc này!') +
-      '</div>';
+    if (kw) {
+      unsubBox.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">🔍 Không tìm thấy giáo viên chưa nộp khớp với từ khóa <b>"' + escapeHtml(searchRaw) + '"</b>.</div>';
+    } else {
+      unsubBox.innerHTML = '<div style="text-align:center;padding:26px;background:#F0F9F4;border-radius:10px;color:#137333;font-weight:600;">' +
+        (selGroup ? ('🎉 Tuyệt vời! Tổ ' + escapeHtml(selGroup) + ' đã hoàn thành nộp minh chứng 100%!') : '🎉 Tuyệt vời! 100% giáo viên đã hoàn thành nộp minh chứng cho công việc này!') +
+        '</div>';
+    }
     return;
   }
 
@@ -1629,6 +1628,152 @@ function renderUnsubmittedList() {
 
 $('unsubGroupFilter').addEventListener('change', function () {
   renderUnsubmittedList();
+});
+
+$('unsubSearchInput').addEventListener('input', function () {
+  renderUnsubmittedList();
+});
+
+$('unsubSearchClear').addEventListener('click', function () {
+  $('unsubSearchInput').value = '';
+  renderUnsubmittedList();
+  $('unsubSearchInput').focus();
+});
+
+/* ---------- Bộ lọc & Hiển thị Danh sách Đã nộp ---------- */
+function populateSubGroupFilter(d) {
+  var sel = $('subGroupFilter');
+  if (!sel) return;
+  var currentVal = sel.value || '';
+
+  var groupMap = {};
+  (d.submittedList || []).forEach(function (sub) {
+    var g = (sub.group || 'Chung').trim();
+    groupMap[g] = (groupMap[g] || 0) + 1;
+  });
+
+  sel.innerHTML = '<option value="">🏢 Tất cả các tổ (' + (d.submittedList ? d.submittedList.length : 0) + ' GV đã nộp)</option>';
+
+  var groups = [];
+  if (d.groupStats && d.groupStats.length) {
+    d.groupStats.forEach(function (gs) {
+      if (groups.indexOf(gs.name) === -1) groups.push(gs.name);
+    });
+  }
+  Object.keys(groupMap).forEach(function (g) {
+    if (groups.indexOf(g) === -1) groups.push(g);
+  });
+
+  groups.forEach(function (g) {
+    var count = groupMap[g] || 0;
+    var opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = g + ' (' + count + ' đã nộp)';
+    if (g === currentVal) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderSubmittedList() {
+  if (!state.adminData) return;
+  var d = state.adminData;
+  var sel = $('subGroupFilter');
+  var selGroup = sel ? sel.value : '';
+  var searchRaw = ($('subSearchInput') && $('subSearchInput').value) || '';
+  var kw = removeVietnameseTones(searchRaw);
+
+  var clearBtn = $('subSearchClear');
+  if (clearBtn) clearBtn.style.display = searchRaw ? 'block' : 'none';
+
+  var filteredList = (d.submittedList || []).filter(function (sub) {
+    if (selGroup && String(sub.group || 'Chung').trim().toLowerCase() !== selGroup.trim().toLowerCase()) {
+      return false;
+    }
+    if (kw) {
+      var nameNoTone = removeVietnameseTones(sub.name || '');
+      var groupNoTone = removeVietnameseTones(sub.group || '');
+      var noteNoTone = removeVietnameseTones(sub.note || '');
+      if (nameNoTone.indexOf(kw) === -1 && groupNoTone.indexOf(kw) === -1 && noteNoTone.indexOf(kw) === -1) return false;
+    }
+    return true;
+  });
+
+  var countEl = $('subFilterCount');
+  if (countEl) {
+    if (kw) {
+      countEl.textContent = 'Tìm thấy: ' + filteredList.length + ' GV';
+    } else if (selGroup) {
+      countEl.textContent = 'Tổ ' + selGroup + ': ' + filteredList.length + ' GV đã nộp';
+    } else {
+      countEl.textContent = 'Toàn trường: ' + filteredList.length + ' GV đã nộp';
+    }
+  }
+
+  var subBox = $('submittedList');
+  if (!subBox) return;
+  subBox.innerHTML = '';
+
+  if (filteredList.length === 0) {
+    if (kw) {
+      subBox.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">🔍 Không tìm thấy giáo viên đã nộp khớp với từ khóa <b>"' + escapeHtml(searchRaw) + '"</b>.</div>';
+    } else if (selGroup) {
+      subBox.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">Chưa có giáo viên nào thuộc Tổ <b>' + escapeHtml(selGroup) + '</b> nộp minh chứng.</div>';
+    } else {
+      subBox.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);">Chưa có giáo viên nào nộp minh chứng cho công việc này.</div>';
+    }
+    return;
+  }
+
+  filteredList.forEach(function (sub, idx) {
+    var row = document.createElement('div');
+    row.className = 'gv-row';
+
+    var validFiles = (sub.files || []).filter(function (f) {
+      return f && (f.id || /^https?:\/\//i.test(f.url));
+    });
+    var fileCount = validFiles.length;
+    var isProxySub = fileCount === 0 && (String(sub.note || '').indexOf('nộp hộ') !== -1 || (sub.files || []).some(function (f) { return String(f.url || '').indexOf('Admin') !== -1; }));
+
+    row.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">' +
+        '<span style="font-size:12px;color:var(--muted);width:22px;text-align:right;flex-shrink:0;">' + (idx + 1) + '.</span>' +
+        '<div style="min-width:0;word-break:break-word;">' +
+          '<b style="font-size:15px;color:var(--ink);">' + escapeHtml(sub.name) + '</b>' +
+          (sub.group ? (' <span style="font-size:12px;color:var(--muted);">(' + escapeHtml(sub.group) + ')</span>') : '') +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">⏰ Nộp lúc: ' + escapeHtml(sub.timestamp || '') +
+            (sub.note ? (' • 💬 <i>' + escapeHtml(sub.note) + '</i>') : '') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">' +
+        (isProxySub
+          ? '<button type="button" class="btn-outline btn-sm view-ev-btn" style="padding:6px 12px;font-size:12px;border-color:#86EFAC;background:#F0FDF4;color:#15803D;">⚡ Admin nộp hộ</button>'
+          : '<button type="button" class="btn-outline btn-sm view-ev-btn" style="padding:6px 12px;font-size:12px;">🖼️ Xem ảnh (' + fileCount + ')</button>') +
+        '<button type="button" class="btn-danger btn-sm del-sub-btn" style="padding:6px 10px;font-size:12px;" title="Mở khóa cho phép nộp lại">🗑️ Mở khóa nộp lại</button>' +
+      '</div>';
+
+    row.querySelector('.view-ev-btn').addEventListener('click', function () {
+      openEvidenceModal(sub);
+    });
+    row.querySelector('.del-sub-btn').addEventListener('click', function () {
+      handleDeleteSubmission(d.currentJob, sub.name);
+    });
+    subBox.appendChild(row);
+  });
+}
+
+$('subGroupFilter').addEventListener('change', function () {
+  renderSubmittedList();
+});
+
+$('subSearchInput').addEventListener('input', function () {
+  renderSubmittedList();
+});
+
+$('subSearchClear').addEventListener('click', function () {
+  $('subSearchInput').value = '';
+  renderSubmittedList();
+  $('subSearchInput').focus();
 });
 
 /* ---------- Sao chép Giáo viên chưa làm ---------- */
@@ -1892,8 +2037,11 @@ function openEvidenceModal(item) {
       };
     });
   }
+  files = files.filter(function (f) {
+    return f && (f.id || /^https?:\/\//i.test(f.url));
+  });
 
-  $('evPhotoCount').textContent = files.length || item.count || 0;
+  $('evPhotoCount').textContent = files.length;
   var grid = $('evThumbsGrid');
   grid.innerHTML = '';
 
@@ -1929,7 +2077,7 @@ function openEvidenceModal(item) {
     $('evOpenDriveLink').style.display = 'flex';
     $('evOpenDriveLink').href = files[0].url || '#';
   } else {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--muted);font-size:14px;">Không tìm thấy ảnh trên máy chủ.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;background:#F0F9F4;border:1px dashed #B8DDD2;border-radius:10px;color:#137333;font-size:14px;font-weight:600;">⚡ Đã được Quản trị viên xác nhận điểm danh nộp hộ (Minh chứng gửi qua Zalo).</div>';
     $('evOpenDriveLink').style.display = 'none';
   }
 
