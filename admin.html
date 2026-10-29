@@ -601,7 +601,7 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
   }
 })();
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw5bKa9OjVgNtZlXqNaExx0xn8OQZKesdfDJgplGOFO4dvg7bYkL6M6wmrYJTOG8kq-/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwbRuglu78EORgZLa9PGqHfpii7CVtTzuBnE_LzS-iKSGncTtg4KIA3QJZxszRnFMrI/exec';
 
 var $ = function (id) { return document.getElementById(id); };
 var state = {
@@ -1845,7 +1845,11 @@ $('qsConfirmBtn').addEventListener('click', async function () {
     showToast('✅ Đã điểm danh nộp hộ cho ' + savedName + '!');
     loadDashboard(state.currentJob, true);
   } catch (err) {
-    $('qsErr').textContent = 'Lỗi: ' + (err.message || err);
+    var errMsg = err.message || String(err);
+    if (errMsg.indexOf('adminSubmitForTeacher') !== -1) {
+      errMsg = 'Google Apps Script chưa cập nhật Code.gs mới. Vui lòng mở Apps Script > Quản lý bản triển khai > Bấm cây bút ✏️ > Chọn "Phiên bản mới" > Bấm Triển khai.';
+    }
+    $('qsErr').textContent = 'Lỗi: ' + errMsg;
     $('qsErr').style.display = 'block';
   } finally {
     btn.disabled = false;
