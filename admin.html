@@ -1740,7 +1740,7 @@ function renderSubmittedList() {
         '<div style="min-width:0;word-break:break-word;">' +
           '<b style="font-size:15px;color:var(--ink);">' + escapeHtml(sub.name) + '</b>' +
           (sub.group ? (' <span style="font-size:12px;color:var(--muted);">(' + escapeHtml(sub.group) + ')</span>') : '') +
-          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">⏰ Nộp lúc: ' + escapeHtml(sub.timestamp || '') +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px;">⏰ Nộp lúc: ' + escapeHtml(sub.time || sub.timestamp || '') +
             (sub.note ? (' • 💬 <i>' + escapeHtml(sub.note) + '</i>') : '') +
           '</div>' +
         '</div>' +
@@ -1755,8 +1755,9 @@ function renderSubmittedList() {
     row.querySelector('.view-ev-btn').addEventListener('click', function () {
       openEvidenceModal(sub);
     });
-    row.querySelector('.del-sub-btn').addEventListener('click', function () {
-      handleDeleteSubmission(d.currentJob, sub.name);
+    var delBtn = row.querySelector('.del-sub-btn');
+    delBtn.addEventListener('click', function () {
+      confirmDeleteSubmission(sub, delBtn);
     });
     subBox.appendChild(row);
   });
@@ -1927,18 +1928,29 @@ $('addJobSubmitBtn').addEventListener('click', async function () {
 });
 
 /* ---------- Mở khóa nộp lại ---------- */
-function confirmDeleteSubmission(sub) {
+function confirmDeleteSubmission(sub, btnEl) {
+  if (!sub) return;
+  var jobName = sub.job || state.currentJob || '';
   var confirmMsg = 'Thầy/Cô có chắc chắn muốn MỞ KHÓA NỘP LẠI cho giáo viên:\n\n' +
     '👤 Giáo viên: ' + sub.name + '\n' +
-    '📌 Công việc: ' + sub.job + '\n\n' +
+    '📌 Công việc: ' + jobName + '\n\n' +
     'Sau khi mở khóa, bài nộp cũ trên Google Sheet sẽ được xóa để giáo viên nộp lại minh chứng mới.';
 
   if (!confirm(confirmMsg)) return;
 
-  call('adminDeleteSubmission', state.adminAuth || 'GOOGLE_AUTH_ADMIN', sub.rowIndex, sub.job, sub.name).then(function () {
-    showToast('🗑️ Đã mở khóa cho GV ' + sub.name + ' nộp lại');
-    loadDashboard(state.currentJob);
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '⏳ Đang mở khóa...';
+  }
+
+  call('adminDeleteSubmission', state.adminAuth || 'GOOGLE_AUTH_ADMIN', sub.rowIndex, jobName, sub.name).then(function () {
+    showToast('🗑️ Đã mở khóa cho GV ' + sub.name + ' nộp lại!');
+    loadDashboard(state.currentJob, true);
   }).catch(function (err) {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = '🗑️ Mở khóa nộp lại';
+    }
     showAlert('Không thể mở khóa: ' + (err.message || err), 'Lỗi');
   });
 }
