@@ -159,6 +159,7 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
 .badge-expired{background:#FCE8E6;color:#C5221F;border:1px solid #FAD2CF}
 .badge-upcoming{background:#E8F0FE;color:#1A73E8;border:1px solid #D2E3FC}
 .badge-done{background:#E1EFEA;color:#1F4D45;border:1px solid #B8DDD2}
+.badge-party{background:#FCE8E6;color:#B31412;border:1px solid #FAD2CF}
 
 /* Modals */
 .modal-backdrop{position:fixed;inset:0;background:rgba(15,28,25,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;animation:fadeIn .2s ease-out}
@@ -326,11 +327,17 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
 
     <!-- Bộ lọc công việc -->
     <div class="field" style="margin-top:18px;">
-      <label for="jobSelect" style="display:flex;justify-content:space-between;align-items:center;">
+      <label for="jobSelect" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
         <span>🎯 Chọn công việc cần xem thống kê:</span>
-        <span id="jobStatusBadge" class="badge badge-active">Đang mở</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span id="jobPartyBadge" class="badge badge-party" style="display:none;">🚩 Chỉ Chi bộ</span>
+          <span id="jobStatusBadge" class="badge badge-active">Đang mở</span>
+        </span>
       </label>
       <select id="jobSelect" style="font-weight:600;font-size:15px;"></select>
+      <div id="partyConfigNotice" style="display:none;margin-top:10px;padding:10px 14px;border-radius:10px;background:#FFF8E1;border:1px solid #FFE082;color:#795548;font-size:13px;line-height:1.5;">
+        ⚠️ <b>Chưa có danh sách Đảng viên:</b> Công việc này chỉ dành riêng cho Chi bộ, nhưng trong Sheet <code>DS</code> chưa có giáo viên nào được đánh dấu ở cột <code>Chi bộ</code>. Vui lòng thêm cột <code>Chi bộ</code> vào Sheet <code>DS</code> và điền <code>x</code> cho các Đảng viên, sau đó bấm <b>🔄 Làm mới</b>.
+      </div>
     </div>
 
     <!-- 6 Thẻ KPI Tổng quan -->
@@ -339,7 +346,7 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
         <div class="kpi-icon" style="background:#EBF3FE;color:#1A73E8;">👥</div>
         <div class="kpi-info">
           <div class="kpi-val" id="kpiTotal">0</div>
-          <div class="kpi-lbl">Tổng giáo viên</div>
+          <div class="kpi-lbl" id="kpiTotalLbl">Tổng giáo viên</div>
         </div>
       </div>
       <div class="kpi-card">
@@ -379,10 +386,10 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
       </div>
     </div>
 
-    <!-- Tiến độ toàn trường -->
+    <!-- Tiến độ toàn trường / Chi bộ -->
     <div style="margin:16px 0 22px;">
       <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px;">
-        <span style="color:var(--brand);">Tiến độ toàn trường: <span id="progressText">0/0</span></span>
+        <span style="color:var(--brand);"><span id="progressScopeLabel">Tiến độ toàn trường:</span> <span id="progressText">0/0</span></span>
         <span id="percentText" style="color:var(--brand);">0%</span>
       </div>
       <div class="progress-bar-bg">
@@ -531,7 +538,17 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
           <input type="text" id="newJobEndTime" placeholder="vd: 23:59 (hoặc trống)">
         </div>
       </div>
-      <p class="hint" style="margin:-6px 0 16px;">Định dạng: Ngày <code>dd/mm/yyyy</code> | Giờ <code>11:00</code> (để trống giờ nếu mở cả ngày)</p>
+      <p class="hint" style="margin:-6px 0 12px;">Định dạng: Ngày <code>dd/mm/yyyy</code> | Giờ <code>11:00</code> (để trống giờ nếu mở cả ngày)</p>
+
+      <div class="field" style="margin-bottom:14px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #FAD2CF;background:#FDF4F3;border-radius:10px;cursor:pointer;margin:0;">
+          <input type="checkbox" id="newJobPartyOnly" style="width:18px;height:18px;min-height:18px;margin-top:2px;accent-color:#B31412;cursor:pointer;flex-shrink:0;">
+          <span style="font-size:14px;line-height:1.4;">
+            <b style="color:#B31412;">🚩 Chỉ dành riêng cho Chi bộ</b>
+            <span style="display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px;">Ẩn hoàn toàn với giáo viên khác; chỉ hiện và thống kê theo các đồng chí có đánh dấu cột <code>Chi bộ</code> trong Sheet <code>DS</code>.</span>
+          </span>
+        </label>
+      </div>
 
       <div id="addJobErr" class="msg" style="display:none;margin-bottom:12px;"></div>
 
@@ -1376,17 +1393,30 @@ function renderDashboard(d) {
     var opt = document.createElement('option');
     opt.value = j.name;
     var dlJ = getJobDeadlineInfo(j, state.today);
-    var prefix = dlJ.status === 'expired' ? '🔒 ' : '';
+    var prefix = (dlJ.status === 'expired' ? '🔒 ' : '') + (j.partyOnly ? '🚩 [Chi bộ] ' : '');
     opt.textContent = prefix + j.name + (j.endDate ? (' (Hạn: ' + formatVN(j.endDate) + (dlJ.status === 'expired' ? ' - Đã đóng' : '') + ')') : '');
     if (j.name === d.currentJob) opt.selected = true;
     sel.appendChild(opt);
   });
 
   var currentJobObj = (d.jobs || []).find(function (j) { return j.name === d.currentJob; });
+  var isPartyJob = Boolean(d.currentJobPartyOnly || (currentJobObj && currentJobObj.partyOnly));
   var dl = getJobDeadlineInfo(currentJobObj, state.today);
   var badge = $('jobStatusBadge');
   badge.className = 'badge ' + dl.badgeClass;
   badge.textContent = dl.icon + ' ' + (dl.shortLabel || dl.label || 'Đang mở');
+
+  var partyBadge = $('jobPartyBadge');
+  if (partyBadge) partyBadge.style.display = isPartyJob ? 'inline-flex' : 'none';
+
+  var partyNotice = $('partyConfigNotice');
+  if (partyNotice) partyNotice.style.display = (isPartyJob && (!d.totalGV || d.totalGV === 0)) ? 'block' : 'none';
+
+  var kpiTotalLbl = $('kpiTotalLbl');
+  if (kpiTotalLbl) kpiTotalLbl.textContent = isPartyJob ? 'Tổng Đảng viên' : 'Tổng giáo viên';
+
+  var progressScopeLabel = $('progressScopeLabel');
+  if (progressScopeLabel) progressScopeLabel.textContent = isPartyJob ? 'Tiến độ Chi bộ:' : 'Tiến độ toàn trường:';
 
   // 2. 6 Thẻ KPI
   $('kpiTotal').textContent = d.totalGV;
@@ -1396,9 +1426,10 @@ function renderDashboard(d) {
   $('kpiExempt').textContent = d.exemptCount || (d.exemptList ? d.exemptList.length : 0);
   $('kpiPercent').textContent = d.percent + '%';
 
-  // 3. Tiến độ toàn trường (tính trên số lượng phải nộp)
+  // 3. Tiến độ toàn trường / Chi bộ (tính trên số lượng phải nộp)
   var reqCount = d.requiredCount !== undefined ? d.requiredCount : d.totalGV;
-  $('progressText').innerHTML = d.submittedCount + '/' + reqCount + ' GV' +
+  var unitLabel = isPartyJob ? 'Đảng viên' : 'GV';
+  $('progressText').innerHTML = d.submittedCount + '/' + reqCount + ' ' + unitLabel +
     (d.exemptCount > 0 ? (' <span style="font-size:12px;font-weight:normal;color:#5E35B1;">(Miễn nộp: ' + d.exemptCount + ')</span>') : '');
   $('percentText').textContent = d.percent + '%';
   $('progressBarFill').style.width = d.percent + '%';
@@ -1781,6 +1812,7 @@ $('subSearchClear').addEventListener('click', function () {
 $('copyUnsubBtn').addEventListener('click', function () {
   if (!state.adminData) return;
   var d = state.adminData;
+  var isPartyJob = Boolean(d.currentJobPartyOnly);
   var sel = $('unsubGroupFilter');
   var selGroup = sel ? sel.value : '';
 
@@ -1790,13 +1822,14 @@ $('copyUnsubBtn').addEventListener('click', function () {
   });
 
   if (list.length === 0) {
-    showToast(selGroup ? ('🎉 Tổ ' + selGroup + ' đã hoàn thành 100%!') : '🎉 100% giáo viên đã hoàn thành!');
+    showToast(selGroup ? ('🎉 Tổ ' + selGroup + ' đã hoàn thành 100%!') : ('🎉 100% ' + (isPartyJob ? 'Đảng viên Chi bộ' : 'giáo viên') + ' đã hoàn thành!'));
     return;
   }
 
+  var whoLabel = isPartyJob ? 'ĐẢNG VIÊN' : 'GIÁO VIÊN';
   var title = selGroup
-    ? ('⚠️ DANH SÁCH GIÁO VIÊN TỔ ' + selGroup.toUpperCase() + ' CHƯA NỘP MINH CHỨNG (' + list.length + ' Thầy/Cô):\n')
-    : ('⚠️ DANH SÁCH ' + list.length + ' THẦY/CÔ CHƯA NỘP MINH CHỨNG:\n');
+    ? ('⚠️ DANH SÁCH ' + whoLabel + ' TỔ ' + selGroup.toUpperCase() + ' CHƯA NỘP MINH CHỨNG (' + list.length + ' ' + (isPartyJob ? 'đ/c' : 'Thầy/Cô') + '):\n')
+    : ('⚠️ DANH SÁCH ' + list.length + ' ' + (isPartyJob ? 'ĐẢNG VIÊN (CHI BỘ)' : 'THẦY/CÔ') + ' CHƯA NỘP MINH CHỨNG:\n');
 
   var text = title +
     (d.currentJob ? ('📌 Công việc: ' + d.currentJob + '\n\n') : '\n') +
@@ -1804,7 +1837,7 @@ $('copyUnsubBtn').addEventListener('click', function () {
       return (idx + 1) + '. ' + t.name + (t.group && !selGroup ? (' (' + t.group + ')') : '');
     }).join('\n');
 
-  copyToClipboard(text, '📋 Đã sao chép danh sách ' + list.length + ' GV chưa làm!');
+  copyToClipboard(text, '📋 Đã sao chép danh sách ' + list.length + (isPartyJob ? ' Đảng viên' : ' GV') + ' chưa làm!');
 });
 
 /* ---------- Sao chép Zalo ---------- */
@@ -1812,6 +1845,7 @@ $('copyZaloBtn').addEventListener('click', function () {
   if (!state.adminData) return;
   var d = state.adminData;
   var currentJob = (d.jobs || []).find(function (j) { return j.name === d.currentJob; }) || { name: d.currentJob };
+  var isPartyJob = Boolean(d.currentJobPartyOnly || currentJob.partyOnly);
   var schoolName = $('school').textContent || 'Trường THCS Vĩnh Tân';
 
   var isGas = (window.location.hostname.indexOf('googleusercontent.com') !== -1 ||
@@ -1828,37 +1862,40 @@ $('copyZaloBtn').addEventListener('click', function () {
   });
 
   var reqCount = d.requiredCount !== undefined ? d.requiredCount : d.totalGV;
-  var headerTag = selGroup ? ('📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG - TỔ ' + selGroup.toUpperCase() + '\n') : '📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG\n';
+  var unitTxt = isPartyJob ? 'Đảng viên' : 'GV';
+  var headerTag = selGroup
+    ? ('📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG' + (isPartyJob ? ' (CHI BỘ)' : '') + ' - TỔ ' + selGroup.toUpperCase() + '\n')
+    : (isPartyJob ? '📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG - CHI BỘ\n' : '📢 THÔNG BÁO TIẾN ĐỘ NỘP MINH CHỨNG\n');
 
   var text = headerTag +
     schoolName + '\n' +
     '📌 Công việc: ' + d.currentJob + '\n' +
     (currentJob.endDate ? ('⏰ Hạn chót: ' + formatVN(currentJob.endDate) + '\n') : '') +
-    '📊 Tiến độ: ' + d.submittedCount + '/' + reqCount + ' GV (' + d.percent + '%)' +
-    (d.exemptCount > 0 ? (' [Miễn nộp: ' + d.exemptCount + ' GV]') : '') + '\n\n';
+    '📊 Tiến độ: ' + d.submittedCount + '/' + reqCount + ' ' + unitTxt + ' (' + d.percent + '%)' +
+    (d.exemptCount > 0 ? (' [Miễn nộp: ' + d.exemptCount + ' ' + unitTxt + ']') : '') + '\n\n';
 
   if (!list || list.length === 0) {
     text += selGroup
-      ? ('🎉 100% Thầy/Cô Tổ ' + selGroup + ' đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn!')
-      : '🎉 100% Thầy/Cô đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn quý Thầy/Cô!';
+      ? ('🎉 100% ' + (isPartyJob ? 'Đảng viên' : 'Thầy/Cô') + ' Tổ ' + selGroup + ' đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn!')
+      : ('🎉 100% ' + (isPartyJob ? 'Đảng viên Chi bộ' : 'Thầy/Cô') + ' đã hoàn thành nộp minh chứng! Xin trân trọng cảm ơn!');
   } else {
     text += selGroup
-      ? ('⚠️ DANH SÁCH ' + list.length + ' THẦY/CÔ TỔ ' + selGroup.toUpperCase() + ' CHƯA NỘP MINH CHỨNG:\n')
-      : ('⚠️ DANH SÁCH ' + list.length + ' THẦY/CÔ CHƯA NỘP MINH CHỨNG:\n');
+      ? ('⚠️ DANH SÁCH ' + list.length + ' ' + (isPartyJob ? 'ĐẢNG VIÊN' : 'THẦY/CÔ') + ' TỔ ' + selGroup.toUpperCase() + ' CHƯA NỘP MINH CHỨNG:\n')
+      : ('⚠️ DANH SÁCH ' + list.length + ' ' + (isPartyJob ? 'ĐẢNG VIÊN (CHI BỘ)' : 'THẦY/CÔ') + ' CHƯA NỘP MINH CHỨNG:\n');
 
     list.forEach(function (t, idx) {
       text += (idx + 1) + '. ' + t.name + (t.group && !selGroup ? (' (' + t.group + ')') : '') + '\n';
     });
 
     if (!selGroup && d.exemptList && d.exemptList.length > 0) {
-      text += '\n🛡️ Miễn nộp (' + d.exemptList.length + ' GV): ';
+      text += '\n🛡️ Miễn nộp (' + d.exemptList.length + ' ' + unitTxt + '): ';
       var exNames = d.exemptList.map(function (e) {
         return e.name + (e.reason && e.reason !== 'Được miễn nộp' ? ' (' + e.reason + ')' : '');
       }).join(', ');
       text += exNames + '\n';
     }
 
-    text += '\n👉 Kính nhờ quý Thầy/Cô sắp xếp chụp ảnh và gửi minh chứng sớm theo quy định.\n' +
+    text += '\n👉 Kính nhờ ' + (isPartyJob ? 'các đồng chí' : 'quý Thầy/Cô') + ' sắp xếp chụp ảnh và gửi minh chứng sớm theo quy định.\n' +
       'Đường link nộp: ' + teacherUrl + '\n' +
       'Trân trọng!';
   }
@@ -1873,6 +1910,7 @@ $('addJobBtn').addEventListener('click', function () {
   $('newJobStartTime').value = '';
   $('newJobEndDate').value = '';
   $('newJobEndTime').value = '';
+  if ($('newJobPartyOnly')) $('newJobPartyOnly').checked = false;
   $('addJobErr').style.display = 'none';
   $('addJobModal').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -1896,6 +1934,7 @@ $('addJobSubmitBtn').addEventListener('click', async function () {
   var startTime = $('newJobStartTime').value.trim();
   var end = $('newJobEndDate').value.trim();
   var endTime = $('newJobEndTime').value.trim();
+  var partyOnly = $('newJobPartyOnly') ? $('newJobPartyOnly').checked : false;
 
   if (!name) {
     $('addJobErr').textContent = 'Vui lòng nhập tên công việc.';
@@ -1913,10 +1952,11 @@ $('addJobSubmitBtn').addEventListener('click', async function () {
       startDate: start,
       startTime: startTime,
       endDate: end,
-      endTime: endTime
+      endTime: endTime,
+      partyOnly: partyOnly
     });
     closeAddJobModal();
-    showToast('✅ Đã thêm công việc "' + name + '" thành công!');
+    showToast('✅ Đã thêm công việc "' + name + '"' + (partyOnly ? ' (Chỉ Chi bộ)' : '') + ' thành công!');
     loadDashboard(name);
   } catch (err) {
     $('addJobErr').textContent = err.message || 'Lỗi khi thêm công việc';

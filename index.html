@@ -1022,6 +1022,7 @@ function onInit(d) {
   $('whoName').textContent = d.gv.name;
   var infoArr = [];
   if (d.gv.group) infoArr.push(d.gv.group);
+  if (d.gv.isParty) infoArr.push('🚩 Chi bộ');
   if (d.email) infoArr.push(d.email);
   $('whoInfo').textContent = infoArr.join(' • ');
 
@@ -1096,13 +1097,14 @@ function onInit(d) {
         var o = document.createElement('option');
         o.value = j.name;
         var dl = getJobDeadlineInfo(j, state.today);
+        var partyTag = j.partyOnly ? '[Chi bộ] ' : '';
         if (dl.status === 'today') {
-          o.textContent = '⚡ [' + dl.shortLabel + '] ' + j.name;
+          o.textContent = '⚡ [' + dl.shortLabel + '] ' + partyTag + j.name;
         } else if (dl.status === 'soon') {
-          o.textContent = '🟡 [' + dl.shortLabel + '] ' + j.name;
+          o.textContent = '🟡 [' + dl.shortLabel + '] ' + partyTag + j.name;
         } else {
           var endTxt = j.endDate ? (' (Hạn: ' + formatVN(j.endDate) + ')') : '';
-          o.textContent = '🟢 ' + j.name + endTxt;
+          o.textContent = (j.partyOnly ? '🚩 [Chi bộ] ' : '🟢 ') + j.name + endTxt;
         }
         grpOpen.appendChild(o);
       });
@@ -1117,7 +1119,8 @@ function onInit(d) {
         var o = document.createElement('option');
         o.value = j.name;
         var dl = getJobDeadlineInfo(j, state.today);
-        o.textContent = '🔒 [' + dl.shortLabel + '] ' + j.name;
+        var partyTag = j.partyOnly ? '[Chi bộ] ' : '';
+        o.textContent = '🔒 [' + dl.shortLabel + '] ' + partyTag + j.name;
         o.style.color = '#C5221F';
         grpExpired.appendChild(o);
       });
@@ -1131,7 +1134,8 @@ function onInit(d) {
       submittedJobs.forEach(function (j) {
         var o = document.createElement('option');
         o.value = j.name;
-        o.textContent = '✅ [ĐÃ NỘP] ' + j.name;
+        var partyTag = j.partyOnly ? '[Chi bộ] ' : '';
+        o.textContent = '✅ [ĐÃ NỘP] ' + partyTag + j.name;
         o.style.color = '#1F4D45';
         o.style.fontWeight = '600';
         grpSub.appendChild(o);
@@ -1638,10 +1642,16 @@ function onJobSelected(jobVal) {
 
     var dl = getJobDeadlineInfo(j, state.today);
     var dBox = $('deadlineBox');
+    var partyBadgeHtml = j.partyOnly
+      ? '<span class="badge" style="background:#FCE8E6;color:#B31412;border:1px solid #FAD2CF;">🚩 Chỉ Chi bộ</span>'
+      : '';
     dBox.className = 'deadline-box ' + (dl.boxClass || 'active');
     dBox.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">' +
-        '<span class="badge ' + dl.badgeClass + '">' + dl.icon + ' ' + dl.label + '</span>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:4px;">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+          '<span class="badge ' + dl.badgeClass + '">' + dl.icon + ' ' + dl.label + '</span>' +
+          partyBadgeHtml +
+        '</div>' +
         '<span style="font-size:12px;opacity:.85;">Hạn chót: <b>' + (j.endDate ? formatVN(j.endDate) : 'Không có') + '</b></span>' +
       '</div>' +
       '<div>' + dl.hint + '</div>';
@@ -1876,8 +1886,11 @@ function openEvidenceModal(itemOrJob) {
       };
     });
   }
+  files = files.filter(function (f) {
+    return f && (f.id || /^https?:\/\//i.test(f.url));
+  });
 
-  $('evPhotoCount').textContent = files.length || item.count || 0;
+  $('evPhotoCount').textContent = files.length;
   var grid = $('evThumbsGrid');
   grid.innerHTML = '';
 
@@ -1913,7 +1926,7 @@ function openEvidenceModal(itemOrJob) {
     $('evOpenDriveLink').style.display = 'flex';
     $('evOpenDriveLink').href = files[0].url || '#';
   } else {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:18px;color:var(--muted);font-size:14px;">Không tìm thấy đường link ảnh trên máy chủ.</div>';
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;background:#F0F9F4;border:1px dashed #B8DDD2;border-radius:10px;color:#137333;font-size:14px;font-weight:600;">⚡ Đã được BGH / Quản trị viên xác nhận điểm danh nộp hộ.</div>';
     $('evOpenDriveLink').style.display = 'none';
   }
 
