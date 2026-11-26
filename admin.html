@@ -435,6 +435,9 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
           <button type="button" id="copyZaloBtn" class="btn-zalo" title="Sao chép toàn bộ mẫu tin thông báo gửi Zalo">
             💬 Sao chép gửi Zalo
           </button>
+          <button type="button" id="exportSheetBtn" class="btn-copy-unsub" style="border-color:#0F766E;color:#0F766E;background:#F0FDFA;" title="Đồng bộ danh sách chưa nộp của các công việc đã hết hạn vào sheet TienDoCongViec">
+            📥 Xuất Sheet hết hạn
+          </button>
         </div>
       </div>
 
@@ -1839,6 +1842,34 @@ $('copyUnsubBtn').addEventListener('click', function () {
 
   copyToClipboard(text, '📋 Đã sao chép danh sách ' + list.length + (isPartyJob ? ' Đảng viên' : ' GV') + ' chưa làm!');
 });
+
+/* ---------- Xuất danh sách chưa nộp (công việc hết hạn) vào Sheet ---------- */
+if ($('exportSheetBtn')) {
+  $('exportSheetBtn').addEventListener('click', async function () {
+    if (!state.adminData) return;
+    var btn = $('exportSheetBtn');
+    var origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = 'Đang xuất…';
+    try {
+      var res = await call('adminExportExpiredJobs', state.adminAuth || 'GOOGLE_AUTH_ADMIN', '__ALL__');
+      if (res && res.exportedJobsCount === 0) {
+        showAlert('Hiện tại chưa có công việc nào hết hạn (có cột Kết thúc nhỏ hơn thời điểm hiện tại) để xuất vào sheet TienDoCongViec.', 'Chưa có việc hết hạn', false);
+      } else {
+        showToast('✅ Đã cập nhật ' + (res ? res.totalRowsWritten : 0) + ' dòng chưa nộp của ' + (res ? res.exportedJobsCount : 0) + ' công việc hết hạn vào sheet TienDoCongViec!');
+      }
+    } catch (err) {
+      var msg = err.message || String(err);
+      if (msg.indexOf('adminExportExpiredJobs') !== -1) {
+        msg = 'Google Apps Script chưa cập nhật Code.gs mới. Vui lòng mở Apps Script > Triển khai > Quản lý bản triển khai > Bấm ✏️ > Chọn "Phiên bản mới" > Triển khai.';
+      }
+      showAlert('Không thể xuất vào Sheet: ' + msg, 'Lỗi');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  });
+}
 
 /* ---------- Sao chép Zalo ---------- */
 $('copyZaloBtn').addEventListener('click', function () {
