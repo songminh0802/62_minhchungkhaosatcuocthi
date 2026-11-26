@@ -334,6 +334,17 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
           <span id="jobStatusBadge" class="badge badge-active">Đang mở</span>
         </span>
       </label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+        <select id="jobMonthFilter" style="width:auto;min-width:165px;padding:7px 10px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid var(--line);background:#F8FAF9;">
+          <option value="">📅 Tất cả các tháng</option>
+        </select>
+        <select id="jobStatusFilter" style="width:auto;min-width:175px;padding:7px 10px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid var(--line);background:#F8FAF9;">
+          <option value="">🏷️ Tất cả trạng thái</option>
+          <option value="expired">🔒 Công việc hết hạn</option>
+          <option value="active">🟢 Đang mở / Sắp mở</option>
+        </select>
+        <span id="jobFilterCount" style="font-size:12px;color:var(--muted);font-weight:600;"></span>
+      </div>
       <select id="jobSelect" style="font-weight:600;font-size:15px;"></select>
       <div id="partyConfigNotice" style="display:none;margin-top:10px;padding:10px 14px;border-radius:10px;background:#FFF8E1;border:1px solid #FFE082;color:#795548;font-size:13px;line-height:1.5;">
         ⚠️ <b>Chưa có danh sách Đảng viên:</b> Công việc này chỉ dành riêng cho Chi bộ, nhưng trong Sheet <code>DS</code> chưa có giáo viên nào được đánh dấu ở cột <code>Chi bộ</code>. Vui lòng thêm cột <code>Chi bộ</code> vào Sheet <code>DS</code> và điền <code>x</code> cho các Đảng viên, sau đó bấm <b>🔄 Làm mới</b>.
@@ -1388,11 +1399,67 @@ $('refreshBtn').addEventListener('click', function () {
   showToast('🔄 Đang làm mới dữ liệu từ Google Sheet...');
 });
 
-function renderDashboard(d) {
-  // 1. Dropdown chọn công việc
+function getJobMonthKey(job) {
+  if (!job) return '';
+  var dt = parseJobDateTime(job.endDate || job.startDate || '', true);
+  if (!dt) return '';
+  return dt.getFullYear() + '-' + padZero(dt.getMonth() + 1);
+}
+
+function populateJobSelect(d, autoReloadIfHidden) {
+  var allJobs = d.jobs || [];
+  var monthSel = $('jobMonthFilter');
+  var statusSel = $('jobStatusFilter');
+  var currentMonth = monthSel ? monthSel.value : '';
+  var currentStatus = statusSel ? statusSel.value : '';
+
+  if (monthSel) {
+    var monthMap = {};
+    allJobs.forEach(function (j) {
+      var mk = getJobMonthKey(j);
+      if (mk) monthMap[mk] = (monthMap[mk] || 0) + 1;
+    });
+    var months = Object.keys(monthMap).sort().reverse();
+    monthSel.innerHTML = '<option value="">📅 Tất cả các tháng (' + allJobs.length + ')</option>';
+    months.forEach(function (mk) {
+      var parts = mk.split('-');
+      var opt = document.createElement('option');
+      opt.value = mk;
+      opt.textContent = 'Tháng ' + parts[1] + '/' + parts[0] + ' (' + monthMap[mk] + ' việc)';
+      if (mk === currentMonth) opt.selected = true;
+      monthSel.appendChild(opt);
+    });
+  }
+
+  var filteredJobs = allJobs.filter(function (j) {
+    if (currentMonth && getJobMonthKey(j) !== currentMonth) return false;
+    if (currentStatus) {
+      var dlJ = getJobDeadlineInfo(j, state.today);
+      if (currentStatus === 'expired' && dlJ.status !== 'expired') return false;
+      if (currentStatus === 'active' && dlJ.status === 'expired') return false;
+    }
+    return true;
+  });
+
+  var countEl = $('jobFilterCount');
+  if (countEl) {
+    countEl.textContent = (currentMonth || currentStatus)
+      ? ('Hiển thị: ' + filteredJobs.length + '/' + allJobs.length + ' công việc')
+      : ('Tổng: ' + allJobs.length + ' công việc');
+  }
+
   var sel = $('jobSelect');
   sel.innerHTML = '';
-  (d.jobs || []).forEach(function (j) {
+  if (!filteredJobs.length) {
+    var emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = '(Không có công việc khớp bộ lọc)';
+    sel.appendChild(emptyOpt);
+    return;
+  }
+
+  var hasCurrent = filteredJobs.some(function (j) { return j.name === d.currentJob; });
+  filteredJobs.forEach(function (j) {
     var opt = document.createElement('option');
     opt.value = j.name;
     var dlJ = getJobDeadlineInfo(j, state.today);
@@ -1401,6 +1468,27 @@ function renderDashboard(d) {
     if (j.name === d.currentJob) opt.selected = true;
     sel.appendChild(opt);
   });
+
+  if (autoReloadIfHidden && !hasCurrent && filteredJobs.length > 0) {
+    sel.value = filteredJobs[0].name;
+    loadDashboard(filteredJobs[0].name);
+  }
+}
+
+if ($('jobMonthFilter')) {
+  $('jobMonthFilter').addEventListener('change', function () {
+    if (state.adminData) populateJobSelect(state.adminData, true);
+  });
+}
+if ($('jobStatusFilter')) {
+  $('jobStatusFilter').addEventListener('change', function () {
+    if (state.adminData) populateJobSelect(state.adminData, true);
+  });
+}
+
+function renderDashboard(d) {
+  // 1. Dropdown chọn công việc (có lọc theo tháng & hết hạn)
+  populateJobSelect(d, false);
 
   var currentJobObj = (d.jobs || []).find(function (j) { return j.name === d.currentJob; });
   var isPartyJob = Boolean(d.currentJobPartyOnly || (currentJobObj && currentJobObj.partyOnly));
