@@ -810,6 +810,9 @@ async function call(fn) {
   } else if (fn === 'adminSubmitForTeacher') {
     payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
     payload.data = args[1] || {};
+  } else if (fn === 'adminExportExpiredJobs') {
+    payload.pin = args[0] || state.adminAuth || 'GOOGLE_AUTH_ADMIN';
+    payload.jobName = args[1] || '__ALL__';
   } else {
     payload.args = args;
   }
